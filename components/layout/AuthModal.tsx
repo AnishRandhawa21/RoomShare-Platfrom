@@ -29,7 +29,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <Sparkles className="h-6 w-6" />
           </div>
           <h3 className="text-xl font-extrabold text-zinc-900">
-            Welcome to RoomNest
+            Welcome to StayKro
           </h3>
           <p className="mt-1 text-xs text-zinc-500">
             Log in to contact verified PG owners & post roommate requirements

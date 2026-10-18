@@ -1,5 +1,5 @@
 // ==============================================================================
-// RoomNest Platform - Production Relational Prisma Schema
+// StayKro Platform - Production Relational Prisma Schema
 // Database: Supabase PostgreSQL
 // ORM: Prisma 6
 // ==============================================================================
@@ -22,6 +22,13 @@ enum Role {
   USER
   OWNER
   ADMIN
+}
+
+enum OwnerInvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }
 
 enum VerificationStatus {
@@ -240,6 +247,11 @@ model User {
   payments                  Payment[]
   reportsSubmitted          Report[]                  @relation("Reporter")
   reportsReceived           Report[]                  @relation("ReportedUser")
+  createdOwnerInvitations   OwnerInvitation[]         @relation("AdminInviter")
+  acceptedOwnerInvitations  OwnerInvitation[]         @relation("AcceptedOwnerInvite")
+  auditLogs                 AuditLog[]
+  reviews                   Review[]
+  localityRequests          LocalityRequest[]
 
   @@index([supabaseAuthId])
   @@index([role])
@@ -296,6 +308,31 @@ model OwnerProfile {
 
   @@index([verificationStatus])
   @@index([contactPhone])
+}
+
+// ==============================================================================
+// 2A. OWNER INVITATION (Admin-Invite-Only Onboarding Model)
+// ==============================================================================
+
+model OwnerInvitation {
+  id               String                @id @default(uuid())
+  email            String
+  inviteeName      String?
+  tokenHash        String                @unique
+  status           OwnerInvitationStatus @default(PENDING)
+  createdByAdminId String
+  createdByAdmin   User                  @relation("AdminInviter", fields: [createdByAdminId], references: [id], onDelete: Cascade)
+  acceptedByUserId String?
+  acceptedByUser   User?                 @relation("AcceptedOwnerInvite", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime              @default(now())
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  revokedAt        DateTime?
+
+  @@index([email])
+  @@index([tokenHash])
+  @@index([status])
+  @@index([createdByAdminId])
 }
 
 // ==============================================================================
@@ -356,6 +393,7 @@ model Property {
   featuredListings FeaturedListing[]
   roommateRequests RoommateRequest[]
   reports          Report[]
+  reviews          Review[]
 
   @@index([city])
   @@index([locality])
@@ -844,4 +882,125 @@ model Report {
 
   @@index([targetType, status])
   @@index([reporterId])
+}
+
+// ==============================================================================
+// 14. PROPERTY REVIEWS & MODERATION
+// ==============================================================================
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  HIDDEN
+  REJECTED
+}
+
+model Review {
+  id          String       @id @default(uuid())
+  propertyId  String
+  property    Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating      Int          // 1 to 5
+  cleanliness Int?
+  foodQuality Int?
+  safety      Int?
+  title       String?
+  comment     String       @db.Text
+  status      ReviewStatus @default(APPROVED)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([propertyId, status])
+  @@index([userId])
+}
+
+// ==============================================================================
+// 15. AUDIT LOGS (Immutable Administrator Activity Trail)
+// ==============================================================================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String   // e.g. "APPROVE_PROPERTY", "REJECT_PROPERTY", "VERIFY_OWNER", "BAN_USER", "RESOLVE_REPORT"
+  targetType String   // e.g. "PROPERTY", "USER", "OWNER", "REPORT", "LOCATION", "ROOMMATE_REQUEST", "REVIEW"
+  targetId   String?  // Target entity primary key
+  details    Json?    // Detailed metadata / payload snapshot
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ==============================================================================
+// 16. LOCATION MASTER DATA (Hierarchical: State -> City -> Locality)
+// ==============================================================================
+
+model State {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String?  @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cities    City[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model City {
+  id        String     @id @default(uuid())
+  stateId   String
+  state     State      @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  name      String
+  slug      String     @unique
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  localities Locality[]
+
+  @@unique([stateId, name])
+  @@index([name])
+  @@index([isActive])
+}
+
+model Locality {
+  id          String   @id @default(uuid())
+  cityId      String
+  city        City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  postalCode  String?
+  latitude    Float?
+  longitude   Float?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([cityId, name])
+  @@index([cityId, isActive])
+  @@index([name])
+}
+
+model LocalityRequest {
+  id            String       @id @default(uuid())
+  stateName     String
+  cityName      String
+  localityName  String
+  requestedById String
+  requestedBy   User         @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+  status        ReportStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status])
+  @@index([requestedById])
 }

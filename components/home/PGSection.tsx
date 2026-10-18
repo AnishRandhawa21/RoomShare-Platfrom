@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { PGProperty } from "@/types";
 import { PGCard } from "./PGCard";
-import { Building, Sparkles, Filter, ChevronRight, Check } from "lucide-react";
+import { Building, Check } from "lucide-react";
+
+type PGFilter = "all" | "boys" | "girls" | "unisex" | "food";
 
 interface PGSectionProps {
   properties: PGProperty[];
@@ -16,7 +18,7 @@ export function PGSection({
   selectedCity,
   onViewProperty,
 }: PGSectionProps) {
-  const [filterType, setFilterType] = useState<"all" | "boys" | "girls" | "unisex" | "food">("all");
+  const [filterType, setFilterType] = useState<PGFilter>("all");
 
   const filteredProperties = properties.filter((pg) => {
     if (filterType === "boys") return pg.gender === "Male";
@@ -25,6 +27,14 @@ export function PGSection({
     if (filterType === "food") return pg.foodIncluded;
     return true;
   });
+
+  const filterTabs: { id: PGFilter; label: string }[] = [
+    { id: "all", label: "All PGs" },
+    { id: "boys", label: "Boys Only" },
+    { id: "girls", label: "Girls Only" },
+    { id: "unisex", label: "Unisex / Coliving" },
+    { id: "food", label: "Meals Included" },
+  ];
 
   return (
     <section id="pg-section" className="py-14 sm:py-20 bg-white">
@@ -46,17 +56,11 @@ export function PGSection({
 
           {/* Quick Filter Tabs */}
           <div className="flex flex-wrap items-center gap-2">
-            {[
-              { id: "all", label: "All PGs" },
-              { id: "boys", label: "Boys Only" },
-              { id: "girls", label: "Girls Only" },
-              { id: "unisex", label: "Unisex / Coliving" },
-              { id: "food", label: "Meals Included" },
-            ].map((tab) => (
+            {filterTabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setFilterType(tab.id as any)}
+                onClick={() => setFilterType(tab.id)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
                   filterType === tab.id
                     ? "bg-zinc-900 text-white shadow-sm"

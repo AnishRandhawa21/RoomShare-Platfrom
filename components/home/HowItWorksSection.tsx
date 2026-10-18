@@ -74,7 +74,7 @@ export function HowItWorksSection() {
             <span>Simple 3-Step Process</span>
           </div>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-zinc-950 sm:text-4xl">
-            How RoomNest Works
+            How StayKro Works
           </h2>
           <p className="mt-2 text-sm sm:text-base text-zinc-500">
             Whether you want a fully managed PG stay or a compatible roommate to share an apartment, we make it effortless.

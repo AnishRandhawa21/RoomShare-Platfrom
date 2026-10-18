@@ -19,7 +19,7 @@ import {
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting RoomNest database seed...");
+  console.log("🌱 Starting StayKro database seed...");
 
   // 1. Seed Catalog Amenities
   console.log("1. Seeding Amenities...");
@@ -121,7 +121,7 @@ async function main() {
     update: {},
     create: {
       supabaseAuthId: "admin-auth-id-001",
-      email: "admin@roomnest.in",
+      email: "admin@staykro.in",
       phone: "+919999900000",
       role: Role.ADMIN,
       profile: {
@@ -216,45 +216,55 @@ async function main() {
     });
 
     // Single Room (capacity is roomType.occupancy = 1)
-    await prisma.roomType.create({
-      data: {
-        propertyId: pg1.id,
-        name: "Single Executive Room",
-        occupancy: 1,
-        monthlyRent: 18000,
-        securityDeposit: 36000,
-        hasAttachedBathroom: true,
-        hasBalcony: true,
-        hasAirConditioning: true,
-        rooms: {
-          create: [
-            { roomNumber: "101", floor: 1, occupiedBeds: 1, status: RoomOperationalStatus.AVAILABLE }, // Full
-            { roomNumber: "102", floor: 1, occupiedBeds: 0, status: RoomOperationalStatus.AVAILABLE }, // Vacant
-          ],
-        },
-      },
+    const existingRt1 = await prisma.roomType.findFirst({
+      where: { propertyId: pg1.id, name: "Single Executive Room" },
     });
+    if (!existingRt1) {
+      await prisma.roomType.create({
+        data: {
+          propertyId: pg1.id,
+          name: "Single Executive Room",
+          occupancy: 1,
+          monthlyRent: 18000,
+          securityDeposit: 36000,
+          hasAttachedBathroom: true,
+          hasBalcony: true,
+          hasAirConditioning: true,
+          rooms: {
+            create: [
+              { roomNumber: "101", floor: 1, occupiedBeds: 1, status: RoomOperationalStatus.AVAILABLE }, // Full
+              { roomNumber: "102", floor: 1, occupiedBeds: 0, status: RoomOperationalStatus.AVAILABLE }, // Vacant
+            ],
+          },
+        },
+      });
+    }
 
     // 2-Seater Sharing (capacity is roomType.occupancy = 2)
-    await prisma.roomType.create({
-      data: {
-        propertyId: pg1.id,
-        name: "2-Seater AC Sharing",
-        occupancy: 2,
-        monthlyRent: 11500,
-        securityDeposit: 23000,
-        hasAttachedBathroom: true,
-        hasAirConditioning: true,
-        rooms: {
-          create: [
-            { roomNumber: "201", floor: 2, occupiedBeds: 2, status: RoomOperationalStatus.AVAILABLE }, // Full
-            { roomNumber: "202", floor: 2, occupiedBeds: 1, status: RoomOperationalStatus.AVAILABLE }, // 1 bed vacant!
-            { roomNumber: "203", floor: 2, occupiedBeds: 0, status: RoomOperationalStatus.AVAILABLE }, // Both beds vacant
-            { roomNumber: "204", floor: 2, occupiedBeds: 0, status: RoomOperationalStatus.UNDER_MAINTENANCE }, // Maintenance
-          ],
-        },
-      },
+    const existingRt2 = await prisma.roomType.findFirst({
+      where: { propertyId: pg1.id, name: "2-Seater AC Sharing" },
     });
+    if (!existingRt2) {
+      await prisma.roomType.create({
+        data: {
+          propertyId: pg1.id,
+          name: "2-Seater AC Sharing",
+          occupancy: 2,
+          monthlyRent: 11500,
+          securityDeposit: 23000,
+          hasAttachedBathroom: true,
+          hasAirConditioning: true,
+          rooms: {
+            create: [
+              { roomNumber: "201", floor: 2, occupiedBeds: 2, status: RoomOperationalStatus.AVAILABLE }, // Full
+              { roomNumber: "202", floor: 2, occupiedBeds: 1, status: RoomOperationalStatus.AVAILABLE }, // 1 bed vacant!
+              { roomNumber: "203", floor: 2, occupiedBeds: 0, status: RoomOperationalStatus.AVAILABLE }, // Both beds vacant
+              { roomNumber: "204", floor: 2, occupiedBeds: 0, status: RoomOperationalStatus.UNDER_MAINTENANCE }, // Maintenance
+            ],
+          },
+        },
+      });
+    }
 
     // Property 2: Sri Sai Grand Residency (HSR Layout, Bengaluru)
     const pg2 = await prisma.property.upsert({
@@ -299,23 +309,28 @@ async function main() {
       },
     });
 
-    await prisma.roomType.create({
-      data: {
-        propertyId: pg2.id,
-        name: "2-Seater Standard",
-        occupancy: 2,
-        monthlyRent: 8500,
-        securityDeposit: 15000,
-        hasAttachedBathroom: true,
-        rooms: {
-          create: [
-            { roomNumber: "101", floor: 1, occupiedBeds: 2, status: RoomOperationalStatus.AVAILABLE },
-            { roomNumber: "102", floor: 1, occupiedBeds: 1, status: RoomOperationalStatus.AVAILABLE },
-            { roomNumber: "103", floor: 1, occupiedBeds: 0, status: RoomOperationalStatus.AVAILABLE },
-          ],
-        },
-      },
+    const existingRtPg2 = await prisma.roomType.findFirst({
+      where: { propertyId: pg2.id, name: "2-Seater Standard" },
     });
+    if (!existingRtPg2) {
+      await prisma.roomType.create({
+        data: {
+          propertyId: pg2.id,
+          name: "2-Seater Standard",
+          occupancy: 2,
+          monthlyRent: 8500,
+          securityDeposit: 15000,
+          hasAttachedBathroom: true,
+          rooms: {
+            create: [
+              { roomNumber: "101", floor: 1, occupiedBeds: 2, status: RoomOperationalStatus.AVAILABLE },
+              { roomNumber: "102", floor: 1, occupiedBeds: 1, status: RoomOperationalStatus.AVAILABLE },
+              { roomNumber: "103", floor: 1, occupiedBeds: 0, status: RoomOperationalStatus.AVAILABLE },
+            ],
+          },
+        },
+      });
+    }
   }
 
   // Owner 2: Meera Kulkarni (Aura Living)
@@ -390,23 +405,28 @@ async function main() {
       },
     });
 
-    await prisma.roomType.create({
-      data: {
-        propertyId: pg3.id,
-        name: "2-Seater Twin Bed AC",
-        occupancy: 2,
-        monthlyRent: 14000,
-        securityDeposit: 28000,
-        hasAttachedBathroom: true,
-        hasAirConditioning: true,
-        rooms: {
-          create: [
-            { roomNumber: "201", floor: 2, occupiedBeds: 1, status: RoomOperationalStatus.AVAILABLE },
-            { roomNumber: "202", floor: 2, occupiedBeds: 0, status: RoomOperationalStatus.AVAILABLE },
-          ],
-        },
-      },
+    const existingRtPg3 = await prisma.roomType.findFirst({
+      where: { propertyId: pg3.id, name: "2-Seater Twin Bed AC" },
     });
+    if (!existingRtPg3) {
+      await prisma.roomType.create({
+        data: {
+          propertyId: pg3.id,
+          name: "2-Seater Twin Bed AC",
+          occupancy: 2,
+          monthlyRent: 14000,
+          securityDeposit: 28000,
+          hasAttachedBathroom: true,
+          hasAirConditioning: true,
+          rooms: {
+            create: [
+              { roomNumber: "201", floor: 2, occupiedBeds: 1, status: RoomOperationalStatus.AVAILABLE },
+              { roomNumber: "202", floor: 2, occupiedBeds: 0, status: RoomOperationalStatus.AVAILABLE },
+            ],
+          },
+        },
+      });
+    }
   }
 
   // 5. Seed Roommate Seeker Users, Roommate Requests, and Roommate Interest

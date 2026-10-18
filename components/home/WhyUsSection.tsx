@@ -61,10 +61,10 @@ export function WhyUsSection() {
             <span>Built For Urban Renters</span>
           </div>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
-            Why Renters Choose RoomNest
+            Why Renters Choose StayKro
           </h2>
           <p className="mt-2 text-sm sm:text-base text-zinc-400">
-            Finding accommodation in Indian metro cities shouldn't be stressful or filled with broker fraud.
+            Finding accommodation in Indian metro cities shouldn&apos;t be stressful or filled with broker fraud.
           </p>
         </div>
 

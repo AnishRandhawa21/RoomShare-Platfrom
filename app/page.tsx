@@ -1,172 +1,45 @@
-"use client";
+import { Suspense } from "react";
+import {
+  getLiveProperties,
+  getDiscoveryLocations,
+} from "@/lib/discovery";
+import { getCurrentUser } from "@/lib/auth/session";
+import { CleanHomeClient } from "@/components/home/CleanHomeClient";
 
-import { useState, useMemo } from "react";
-import { Header } from "@/components/layout/Header";
-import { Hero } from "@/components/home/Hero";
-import { PGSection } from "@/components/home/PGSection";
-import { RoommateSection } from "@/components/home/RoommateSection";
-import { MapPlaceholderSection } from "@/components/home/MapPlaceholderSection";
-import { HowItWorksSection } from "@/components/home/HowItWorksSection";
-import { PopularLocationsSection } from "@/components/home/PopularLocationsSection";
-import { WhyUsSection } from "@/components/home/WhyUsSection";
-import { Footer } from "@/components/layout/Footer";
-import { PropertyModal } from "@/components/home/PropertyModal";
-import { RoommateModal } from "@/components/home/RoommateModal";
-import { AuthModal } from "@/components/layout/AuthModal";
-import { MOCK_PGS, MOCK_ROOMMATES } from "@/data/mockData";
-import { PGProperty, RoommateRequest } from "@/types";
+async function HomeContent() {
+  const [properties, user, locationsData] = await Promise.all([
+    getLiveProperties(),
+    getCurrentUser(),
+    getDiscoveryLocations(),
+  ]);
 
-export default function HomePage() {
-  const [selectedCity, setSelectedCity] = useState<string>("Bengaluru");
-  const [activeJourney, setActiveJourney] = useState<"pg" | "roommate">("pg");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-
-  // Modals state
-  const [selectedPG, setSelectedPG] = useState<PGProperty | null>(null);
-  const [selectedRoommate, setSelectedRoommate] = useState<RoommateRequest | null>(null);
-  const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
-
-  // Quick localities based on selected city
-  const quickLocalities = useMemo(() => {
-    switch (selectedCity) {
-      case "Bengaluru":
-        return ["Koramangala", "HSR Layout", "Indiranagar", "Whitefield", "Electronic City"];
-      case "Pune":
-        return ["Hinjawadi", "Viman Nagar", "Wakad", "Baner", "Kothrud"];
-      case "Gurugram":
-        return ["Cyber Hub", "DLF Phase 2", "Sector 48", "Golf Course Road"];
-      case "Hyderabad":
-        return ["Gachibowli", "Madhapur", "Hitec City", "Kondapur"];
-      default:
-        return ["City Center", "Tech Park Zone", "Metro Corridor"];
-    }
-  }, [selectedCity]);
-
-  // Filtered PGs
-  const displayedPGs = useMemo(() => {
-    return MOCK_PGS.filter((pg) => {
-      const matchesCity =
-        pg.city.toLowerCase() === selectedCity.toLowerCase() ||
-        searchQuery.trim().length > 0;
-      const matchesQuery =
-        !searchQuery.trim() ||
-        pg.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        pg.locality.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        pg.city.toLowerCase().includes(searchQuery.toLowerCase());
-
-      return matchesCity && matchesQuery;
-    });
-  }, [selectedCity, searchQuery]);
-
-  // Filtered Roommates
-  const displayedRoommates = useMemo(() => {
-    return MOCK_ROOMMATES.filter((req) => {
-      const matchesCity =
-        req.city.toLowerCase() === selectedCity.toLowerCase() ||
-        searchQuery.trim().length > 0;
-      const matchesQuery =
-        !searchQuery.trim() ||
-        req.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        req.locality.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        req.roomType.toLowerCase().includes(searchQuery.toLowerCase());
-
-      return matchesCity && matchesQuery;
-    });
-  }, [selectedCity, searchQuery]);
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (activeJourney === "pg") {
-      const el = document.getElementById("pg-section");
-      el?.scrollIntoView({ behavior: "smooth" });
-    } else {
-      const el = document.getElementById("roommate-section");
-      el?.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  const handleSelectLocality = (locality: string, city: string) => {
-    setSelectedCity(city);
-    setSearchQuery(locality);
-    const target = activeJourney === "pg" ? "pg-section" : "roommate-section";
-    document.getElementById(target)?.scrollIntoView({ behavior: "smooth" });
-  };
+  const sanitizedUser = user
+    ? {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        profile: user.profile
+          ? {
+              fullName: user.profile.fullName,
+              avatarUrl: user.profile.avatarUrl,
+            }
+          : null,
+      }
+    : null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-zinc-900 selection:bg-indigo-100 selection:text-indigo-900">
-      {/* 1. Header Navigation */}
-      <Header
-        selectedCity={selectedCity}
-        onSelectCity={(city) => {
-          setSelectedCity(city);
-          setSearchQuery("");
-        }}
-        onOpenAuth={() => setIsAuthOpen(true)}
-        onSearchClick={() => {
-          document.getElementById("locality-input")?.focus();
-        }}
-      />
+    <CleanHomeClient
+      initialProperties={properties}
+      availableCities={locationsData.cities}
+      currentUser={sanitizedUser}
+    />
+  );
+}
 
-      <main className="flex-1">
-        {/* 2. Hero Section with Dual Journeys & Search */}
-        <Hero
-          activeTab={activeJourney}
-          setActiveTab={setActiveJourney}
-          selectedCity={selectedCity}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onSearchSubmit={handleSearchSubmit}
-          quickLocalities={quickLocalities}
-        />
-
-        {/* 3. Journey 1: Find A PG Section */}
-        <PGSection
-          properties={displayedPGs}
-          selectedCity={selectedCity}
-          onViewProperty={(property) => setSelectedPG(property)}
-        />
-
-        {/* 4. Journey 2: Find A Roommate Section */}
-        <RoommateSection
-          requests={displayedRoommates}
-          selectedCity={selectedCity}
-          onViewRequest={(request) => setSelectedRoommate(request)}
-          onPostRequest={() => setIsAuthOpen(true)}
-        />
-
-        {/* 5. Map Preview Section (Placeholder per specs, no MapLibre yet) */}
-        <MapPlaceholderSection
-          onSelectProperty={(property) => setSelectedPG(property)}
-        />
-
-        {/* 6. Popular Locations */}
-        <PopularLocationsSection onSelectLocality={handleSelectLocality} />
-
-        {/* 7. How It Works Section */}
-        <HowItWorksSection />
-
-        {/* 8. Why Use The Platform */}
-        <WhyUsSection />
-      </main>
-
-      {/* 9. Footer */}
-      <Footer />
-
-      {/* Interactive Detail Modals */}
-      <PropertyModal
-        property={selectedPG}
-        onClose={() => setSelectedPG(null)}
-      />
-
-      <RoommateModal
-        request={selectedRoommate}
-        onClose={() => setSelectedRoommate(null)}
-      />
-
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-      />
-    </div>
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center text-xs text-zinc-400 font-medium">Loading platform...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

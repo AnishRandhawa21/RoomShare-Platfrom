@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { RoommateRequest } from "@/types";
 import { RoommateCard } from "./RoommateCard";
-import { Users, Plus, ShieldCheck, HeartHandshake, UserPlus } from "lucide-react";
+import { Users, ShieldCheck, UserPlus } from "lucide-react";
+
+type RoommateFilter = "all" | "male" | "female" | "under10k";
 
 interface RoommateSectionProps {
   requests: RoommateRequest[];
@@ -18,7 +20,7 @@ export function RoommateSection({
   onViewRequest,
   onPostRequest,
 }: RoommateSectionProps) {
-  const [filter, setFilter] = useState<"all" | "male" | "female" | "under10k">("all");
+  const [filter, setFilter] = useState<RoommateFilter>("all");
 
   const filteredRequests = requests.filter((req) => {
     if (filter === "male") return req.seekerGender === "Male";
@@ -26,6 +28,13 @@ export function RoommateSection({
     if (filter === "under10k") return req.rentPerPerson <= 10000;
     return true;
   });
+
+  const filterTabs: { id: RoommateFilter; label: string }[] = [
+    { id: "all", label: "All Roommate Posts" },
+    { id: "female", label: "Female Flatmates" },
+    { id: "male", label: "Male Flatmates" },
+    { id: "under10k", label: "Under ₹10,000 / month" },
+  ];
 
   return (
     <section id="roommate-section" className="py-14 sm:py-20 bg-zinc-50/70 border-y border-zinc-200/80">
@@ -59,16 +68,11 @@ export function RoommateSection({
 
         {/* Filter Chips */}
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          {[
-            { id: "all", label: "All Roommate Posts" },
-            { id: "female", label: "Female Flatmates" },
-            { id: "male", label: "Male Flatmates" },
-            { id: "under10k", label: "Under ₹10,000 / month" },
-          ].map((tab) => (
+          {filterTabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setFilter(tab.id as any)}
+              onClick={() => setFilter(tab.id)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
                 filter === tab.id
                   ? "bg-zinc-900 text-white shadow-sm"

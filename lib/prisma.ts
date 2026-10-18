@@ -5,14 +5,35 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma =
-  globalForPrisma.prisma ??
+const createPrismaClient = () =>
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function getPrismaClient(): PrismaClient {
+  if (process.env.NODE_ENV === "production") {
+    return globalForPrisma.prisma ?? createPrismaClient();
+  }
+
+  // In development, ensure the cached global instance has newly generated models
+  if (
+    !globalForPrisma.prisma ||
+    !(globalForPrisma.prisma as any).localityRequest ||
+    !(globalForPrisma.prisma as any).auditLog
+  ) {
+    if (globalForPrisma.prisma) {
+      try {
+        globalForPrisma.prisma.$disconnect();
+      } catch {
+        // ignore disconnect errors during hot-reload
+      }
+    }
+    globalForPrisma.prisma = createPrismaClient();
+  }
+
+  return globalForPrisma.prisma;
 }
+
+export const prisma = getPrismaClient();
 
 export * from "@/lib/generated/prisma/client";
