@@ -1,0 +1,847 @@
+// ==============================================================================
+// RoomNest Platform - Production Relational Prisma Schema
+// Database: Supabase PostgreSQL
+// ORM: Prisma 6
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==============================================================================
+// ENUMS
+// ==============================================================================
+
+enum Role {
+  USER
+  OWNER
+  ADMIN
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PropertyType {
+  PG
+  COLIVING
+  HOSTEL
+  APARTMENT
+}
+
+enum GenderPolicy {
+  BOYS
+  GIRLS
+  UNISEX
+}
+
+enum PropertyStatus {
+  DRAFT
+  PENDING_APPROVAL
+  PUBLISHED
+  REJECTED
+  INACTIVE
+}
+
+enum FoodOffering {
+  VEG_ONLY
+  VEG_NONVEG
+  NO_FOOD
+  OPTIONAL
+}
+
+enum ImageType {
+  FACADE
+  BEDROOM
+  WASHROOM
+  DINING
+  COMMON_AREA
+  BALCONY
+  OTHER
+}
+
+enum RoomOperationalStatus {
+  AVAILABLE          // Operational & open for occupancy
+  UNDER_MAINTENANCE  // Temporarily closed for repairs/renovation
+  RESERVED           // Reserved for upcoming move-in
+  INACTIVE           // Decommissioned by owner
+}
+
+enum RoommateRequestStatus {
+  ACTIVE
+  FILLED
+  EXPIRED
+  CLOSED
+  UNDER_REVIEW
+}
+
+enum RoommateInterestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+}
+
+enum DietaryPreference {
+  VEGETARIAN_ONLY
+  NON_VEG_OK
+  VEGAN
+  NO_PREFERENCE
+}
+
+enum SmokingPreference {
+  NON_SMOKER_ONLY
+  OUTSIDE_ONLY
+  SMOKING_OK
+}
+
+enum DrinkingPreference {
+  NON_DRINKER_ONLY
+  OCCASIONAL_OK
+  NO_PREFERENCE
+}
+
+enum OccupationPreference {
+  WORKING_PROFESSIONAL
+  STUDENT
+  ANY
+}
+
+enum SleepSchedule {
+  EARLY_BIRD
+  NIGHT_OWL
+  FLEXIBLE
+}
+
+enum ConversationStatus {
+  ACTIVE
+  ARCHIVED
+  BLOCKED
+  CLOSED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+enum EnquiryChannel {
+  DIRECT_CALL
+  WHATSAPP_CLICK
+  WEBSITE_FORM
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  VISIT_SCHEDULED
+  BOOKED
+  CLOSED
+}
+
+enum BillingInterval {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum FeaturedTargetType {
+  PROPERTY
+  ROOM_TYPE
+}
+
+enum FeaturedStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentPurpose {
+  OWNER_SUBSCRIPTION
+  FEATURED_PROPERTY
+  FEATURED_ROOM
+}
+
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum ReportTargetType {
+  PROPERTY
+  ROOMMATE_REQUEST
+  USER
+}
+
+enum ReportReason {
+  SPAM
+  MISLEADING_INFO
+  BROKER_IMPERSONATION
+  INAPPROPRIATE_BEHAVIOR
+  HARASSMENT
+  SCAM_FRAUD
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+// ==============================================================================
+// 1. AUTH & USER ENTITIES
+// ==============================================================================
+
+model User {
+  id              String    @id @default(uuid())
+  supabaseAuthId  String    @unique // Foreign key to Supabase auth.users.id
+  email           String?   @unique
+  phone           String?   @unique
+  role            Role      @default(USER)
+  isActive        Boolean   @default(true)
+  deletedAt       DateTime? // Soft-delete support
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relationships
+  profile                   Profile?
+  ownerProfile              OwnerProfile?
+  roommateRequests          RoommateRequest[]
+  roommateInterestsSent     RoommateInterest[]        @relation("Applicant")
+  conversationParticipants  ConversationParticipant[]
+  messages                  Message[]
+  pgEnquiries               PGEnquiry[]
+  savedProperties           SavedProperty[]
+  savedRoommateRequests     SavedRoommateRequest[]
+  payments                  Payment[]
+  reportsSubmitted          Report[]                  @relation("Reporter")
+  reportsReceived           Report[]                  @relation("ReportedUser")
+
+  @@index([supabaseAuthId])
+  @@index([role])
+  @@index([email])
+  @@index([phone])
+}
+
+model Profile {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName           String
+  avatarUrl          String?            // Public delivery URL from Cloudflare R2
+  bio                String?            @db.Text
+  gender             GenderPolicy?
+  dateOfBirth        DateTime?
+  age                Int?
+  profession         String?            // e.g. "Software Engineer"
+  companyOrCollege   String?            // e.g. "Amazon" or "IIT Bombay"
+  city               String?
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  verifiedAt         DateTime?
+  rejectionReason    String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([fullName])
+  @@index([verificationStatus])
+}
+
+// ==============================================================================
+// 2. OWNER MODEL (One owner can manage MULTIPLE properties)
+// ==============================================================================
+
+model OwnerProfile {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName       String?            // e.g. "Sunrise Hospitality Group"
+  contactPhone       String             // Primary contact for direct tenant phone calls
+  whatsappNumber     String?            // Primary contact for direct WhatsApp enquiries
+  altPhone           String?
+  idProofType        String?            // e.g. "Aadhaar", "GST Certificate"
+  idProofStorageKey  String?            // Private R2 storage key for admin verification
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedAt         DateTime?
+  rejectionReason    String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relationships
+  properties    Property[]
+  subscriptions OwnerSubscription[]
+
+  @@index([verificationStatus])
+  @@index([contactPhone])
+}
+
+// ==============================================================================
+// 3. PROPERTY MODEL
+// ==============================================================================
+
+model Property {
+  id               String         @id @default(uuid())
+  ownerId          String
+  owner            OwnerProfile   @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  name             String         // e.g. "Sunrise PG"
+  slug             String         @unique // SEO-friendly unique URL slug
+  description      String         @db.Text
+  propertyType     PropertyType   @default(PG)
+  genderPolicy     GenderPolicy   @default(UNISEX)
+  status           PropertyStatus @default(DRAFT)
+  isVerified       Boolean        @default(false)
+  verifiedAt       DateTime?
+  rejectionReason  String?
+
+  // Geographic Address & Coordinates (Compatible with B-tree & PostGIS GiST index)
+  addressLine1     String
+  addressLine2     String?
+  locality         String         // e.g. "Koramangala 4th Block"
+  city             String         // e.g. "Bengaluru"
+  state            String         // e.g. "Karnataka"
+  postalCode       String         // e.g. "560034"
+  latitude         Float          // WGS 84 latitude
+  longitude        Float          // WGS 84 longitude
+
+  // Contact Details (Direct phone / WhatsApp for prospective tenants)
+  contactPhone     String
+  whatsappNumber   String?
+
+  // Rules & Operations
+  gateClosingTime  String?        // e.g. "11:00 PM", "No Curfew"
+  noticePeriodDays Int            @default(30)
+  houseRules       String[]       // e.g. ["No smoking in rooms", "Quiet hours after 11 PM"]
+
+  // Food & Dining
+  foodIncluded     Boolean        @default(false)
+  foodOffering     FoodOffering   @default(NO_FOOD)
+
+  // Derived Performance Cache
+  startingPrice    Int?           // Lowest monthly rent among active room types in INR
+
+  // Soft-delete & Audit
+  deletedAt        DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relationships (Hierarchy: Property -> RoomType -> Room)
+  images           PropertyImage[]
+  amenities        PropertyAmenity[]
+  roomTypes        RoomType[]
+  enquiries        PGEnquiry[]
+  savedBy          SavedProperty[]
+  featuredListings FeaturedListing[]
+  roommateRequests RoommateRequest[]
+  reports          Report[]
+
+  @@index([city])
+  @@index([locality])
+  @@index([city, locality])
+  @@index([latitude, longitude])
+  @@index([status, isVerified])
+  @@index([ownerId])
+  @@index([genderPolicy])
+  @@index([startingPrice])
+  @@index([deletedAt])
+}
+
+model PropertyImage {
+  id         String    @id @default(uuid())
+  propertyId String
+  property   Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  storageKey String    // Cloudflare R2 object key
+  url        String    // Delivery URL / CDN endpoint
+  imageType  ImageType @default(OTHER)
+  sortOrder  Int       @default(0)
+  altText    String?
+  isCover    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@index([propertyId, sortOrder])
+  @@index([propertyId, isCover])
+}
+
+// ==============================================================================
+// 4. AMENITIES (Normalized Catalog)
+// ==============================================================================
+
+model Amenity {
+  id                String            @id @default(uuid())
+  name              String            @unique // e.g. "High-Speed WiFi", "Power Backup"
+  category          String            // e.g. "ESSENTIAL", "SAFETY", "FOOD", "COMFORT"
+  icon              String?           // Lucide React icon name
+  createdAt         DateTime          @default(now())
+
+  propertyAmenities PropertyAmenity[]
+  roomTypeAmenities RoomTypeAmenity[]
+
+  @@index([category])
+}
+
+model PropertyAmenity {
+  id         String   @id @default(uuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenityId  String
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+  note       String?  // e.g. "200 Mbps fiber line"
+
+  @@unique([propertyId, amenityId])
+  @@index([propertyId])
+  @@index([amenityId])
+}
+
+// ==============================================================================
+// 5. ROOM TYPE (Belongs to Property)
+// ==============================================================================
+
+model RoomType {
+  id                  String            @id @default(uuid())
+  propertyId          String
+  property            Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name                String            // e.g. "Private Studio", "2-Seater AC", "3-Seater Regular"
+  occupancy           Int               // SINGLE SOURCE OF TRUTH FOR CAPACITY (1 for Private, 2 for 2-Seater, etc.)
+  monthlyRent         Int               // In INR per bed/person
+  securityDeposit     Int               // In INR per bed/person
+  maintenanceCharges  Int               @default(0) // In INR
+  foodCharges         Int               @default(0) // In INR
+  description         String?           @db.Text
+  hasAttachedBathroom Boolean           @default(false)
+  hasBalcony          Boolean           @default(false)
+  hasAirConditioning  Boolean           @default(false)
+  genderRestriction   GenderPolicy      @default(UNISEX)
+  isActive            Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  // Relationships
+  rooms               Room[]            // Individual room inventory
+  images              RoomImage[]
+  amenities           RoomTypeAmenity[]
+  enquiries           PGEnquiry[]
+  roommateRequests    RoommateRequest[]
+  featuredListings    FeaturedListing[]
+
+  @@index([propertyId])
+  @@index([occupancy, monthlyRent])
+  @@index([isActive])
+}
+
+model RoomImage {
+  id         String   @id @default(uuid())
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  storageKey String   // Cloudflare R2 object key
+  url        String   // Delivery URL
+  sortOrder  Int      @default(0)
+  altText    String?
+  createdAt  DateTime @default(now())
+
+  @@index([roomTypeId, sortOrder])
+}
+
+model RoomTypeAmenity {
+  id         String   @id @default(uuid())
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  amenityId  String
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@unique([roomTypeId, amenityId])
+  @@index([roomTypeId])
+}
+
+// ==============================================================================
+// 6. INDIVIDUAL ROOM INVENTORY (Belongs to RoomType)
+// ==============================================================================
+
+model Room {
+  id           String                @id @default(uuid())
+  roomTypeId   String
+  roomType     RoomType              @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  roomNumber   String                // e.g. "101", "204-B"
+  floor        Int?
+  occupiedBeds Int                   @default(0) // Deliberate occupancy count: 0 <= occupiedBeds <= roomType.occupancy
+  status       RoomOperationalStatus @default(AVAILABLE) // Operational availability
+  notes        String?               @db.Text
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@unique([roomTypeId, roomNumber])
+  @@index([roomTypeId, status])
+  @@index([occupiedBeds])
+}
+
+// ==============================================================================
+// 7. ROOMMATE SHARE JOURNEY (Separated from PG Inventory)
+// ==============================================================================
+
+model RoommateRequest {
+  id                      String                 @id @default(uuid())
+  creatorId               String
+  creator                 User                   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  // Contextual link if currently living in a listed PG or room type
+  propertyId              String?
+  property                Property?              @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  roomTypeId              String?
+  roomType                RoomType?              @relation(fields: [roomTypeId], references: [id], onDelete: SetNull)
+
+  // In case the current living space is an unlisted private apartment/society
+  propertyName            String?                // e.g. "Brigade Gateway 3BHK"
+  roomTypeName            String?                // e.g. "2-Seater Master Bedroom"
+
+  title                   String                 // e.g. "Need 1 roommate for 2-Seater master bedroom"
+  description             String                 @db.Text
+  locality                String
+  city                    String
+  state                   String
+  latitude                Float?
+  longitude               Float?
+
+  requiredRoommateCount   Int                    @default(1)
+  currentOccupantsCount   Int                    @default(1)
+  rentPerPerson           Int                    // In INR / month
+  securityDeposit         Int                    // In INR
+  preferredGender         GenderPolicy           @default(UNISEX)
+  minAge                  Int?
+  maxAge                  Int?
+  moveInDate              DateTime
+  availabilityDescription String?                // e.g. "Available from November 1st"
+  isFurnished             Boolean                @default(true)
+  hasAttachedBathroom     Boolean                @default(false)
+  status                  RoommateRequestStatus  @default(ACTIVE)
+  expiresAt               DateTime
+  deletedAt               DateTime?
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+
+  // Relationships
+  preferences             RoommatePreference?
+  images                  RoommateRequestImage[]
+  interests               RoommateInterest[]     // Applications/Interests from prospective roommates
+  conversations           Conversation[]         // In-platform website chat
+  savedBy                 SavedRoommateRequest[]
+  reports                 Report[]
+
+  @@index([city, locality])
+  @@index([status, expiresAt])
+  @@index([creatorId])
+  @@index([rentPerPerson])
+  @@index([preferredGender])
+}
+
+model RoommatePreference {
+  id            String               @id @default(uuid())
+  requestId     String               @unique
+  request       RoommateRequest      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  dietary       DietaryPreference    @default(NO_PREFERENCE)
+  smoking       SmokingPreference    @default(NON_SMOKER_ONLY)
+  drinking      DrinkingPreference   @default(NO_PREFERENCE)
+  occupation    OccupationPreference @default(ANY)
+  sleepSchedule SleepSchedule        @default(FLEXIBLE)
+  petsAllowed   Boolean              @default(false)
+  customTags    String[]             // e.g. ["Non-smoker", "Working Professional", "Early Bird"]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model RoommateRequestImage {
+  id         String          @id @default(uuid())
+  requestId  String
+  request    RoommateRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  storageKey String          // Cloudflare R2 object key
+  url        String          // Delivery URL
+  sortOrder  Int             @default(0)
+  createdAt  DateTime        @default(now())
+
+  @@index([requestId, sortOrder])
+}
+
+// Separate model for another user expressing interest in a RoommateRequest
+model RoommateInterest {
+  id             String                 @id @default(uuid())
+  requestId      String
+  request        RoommateRequest        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  applicantId    String
+  applicant      User                   @relation("Applicant", fields: [applicantId], references: [id], onDelete: Cascade)
+  status         RoommateInterestStatus @default(PENDING)
+  introMessage   String?                @db.Text
+  conversationId String?                @unique // Connected chat conversation upon initiation
+  conversation   Conversation?          @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([requestId, applicantId]) // Only one active interest per user per request
+  @@index([applicantId])
+  @@index([status])
+}
+
+// ==============================================================================
+// 8. IN-PLATFORM CHAT (For Roommates, Subscribable via Supabase Realtime)
+// ==============================================================================
+
+model Conversation {
+  id                String                  @id @default(uuid())
+  roommateRequestId String?
+  roommateRequest   RoommateRequest?        @relation(fields: [roommateRequestId], references: [id], onDelete: SetNull)
+  status            ConversationStatus      @default(ACTIVE)
+  lastMessageText   String?                 @db.Text
+  lastMessageAt     DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  roommateInterest  RoommateInterest?
+  participants      ConversationParticipant[]
+  messages          Message[]
+
+  @@index([roommateRequestId])
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime?    // Used to calculate unread message count
+  isMuted        Boolean      @default(false)
+  isBlocked      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content        String       @db.Text
+  messageType    MessageType  @default(TEXT)
+  createdAt      DateTime     @default(now())
+
+  // Indexed for fast message retrieval, cursor pagination, and Supabase Realtime
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+// ==============================================================================
+// 9. PG ENQUIRY MODEL (Direct Phone Call / WhatsApp / Web Form)
+// ==============================================================================
+
+model PGEnquiry {
+  id           String         @id @default(uuid())
+  propertyId   String
+  property     Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomTypeId   String?
+  roomType     RoomType?      @relation(fields: [roomTypeId], references: [id], onDelete: SetNull)
+  userId       String?        // Nullable: guest / unauthenticated users can enquire
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  visitorName  String
+  visitorPhone String
+  visitorEmail String?
+  channel      EnquiryChannel @default(DIRECT_CALL)
+  moveInDate   DateTime?
+  message      String?        @db.Text
+  status       EnquiryStatus  @default(NEW)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([propertyId, status])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ==============================================================================
+// 10. SAVED ITEMS (Bookmarks)
+// ==============================================================================
+
+model SavedProperty {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+}
+
+model SavedRoommateRequest {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestId String
+  request   RoommateRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  createdAt DateTime        @default(now())
+
+  @@unique([userId, requestId])
+  @@index([userId])
+}
+
+// ==============================================================================
+// 11. MONETIZATION, SUBSCRIPTIONS & FEATURED TIERS (Fully Configurable)
+// ==============================================================================
+
+model SubscriptionPlan {
+  id            String              @id @default(uuid())
+  name          String              // e.g. "Single Property Starter", "Multi-Property Pro"
+  code          String              @unique // "OWNER_SINGLE_PROPERTY", "OWNER_MULTI_PROPERTY"
+  priceInr      Int                 // Seed value: 499 or 999 (DB configurable, not hardcoded in code)
+  interval      BillingInterval     @default(MONTHLY)
+  maxProperties Int                 @default(1) // 1 for single property, 999 for multi
+  features      String[]
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  subscriptions OwnerSubscription[]
+}
+
+model OwnerSubscription {
+  id          String             @id @default(uuid())
+  ownerId     String
+  owner       OwnerProfile       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  planId      String
+  plan        SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status      SubscriptionStatus @default(PENDING_PAYMENT)
+  startDate   DateTime
+  endDate     DateTime
+  autoRenew   Boolean            @default(false)
+  cancelledAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  payments    Payment[]
+
+  @@index([ownerId, status])
+  @@index([endDate])
+}
+
+// Configurable pricing for featured listings (₹199 property, ₹99 room are DB-driven)
+model FeaturedPricingPlan {
+  id           String             @id @default(uuid())
+  targetType   FeaturedTargetType
+  name         String             // e.g. "Featured Property Boost (7 Days)", "Featured Room Boost"
+  code         String             @unique // e.g. "FEATURE_PROPERTY_WEEKLY", "FEATURE_ROOM_WEEKLY"
+  priceInr     Int                // Seed value: 199 or 99 (DB configurable)
+  durationDays Int                @default(7)
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  listings     FeaturedListing[]
+}
+
+model FeaturedListing {
+  id            String              @id @default(uuid())
+  pricingPlanId String
+  pricingPlan   FeaturedPricingPlan @relation(fields: [pricingPlanId], references: [id], onDelete: Restrict)
+  targetType    FeaturedTargetType
+  propertyId    String?
+  property      Property?           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomTypeId    String?
+  roomType      RoomType?           @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  startDate     DateTime
+  endDate       DateTime
+  status        FeaturedStatus      @default(PENDING_PAYMENT)
+  pricePaidInr  Int                 // Snapshot of price paid at purchase time
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  payments      Payment[]
+
+  @@index([targetType, status, endDate])
+  @@index([propertyId])
+  @@index([roomTypeId])
+}
+
+// ==============================================================================
+// 12. PAYMENTS (Razorpay Integration)
+// ==============================================================================
+
+model Payment {
+  id                  String             @id @default(uuid())
+  userId              String
+  user                User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  amount              Int                // Amount in INR
+  currency            String             @default("INR")
+  purpose             PaymentPurpose
+  status              PaymentStatus      @default(CREATED)
+
+  // Razorpay Transaction References (Stored safely, verified server-side)
+  razorpayOrderId     String?            @unique
+  razorpayPaymentId   String?            @unique
+  razorpaySignature   String?
+  paymentMethod       String?            // e.g. "UPI", "CARD", "NETBANKING"
+  verifiedAt          DateTime?          // Set only after server-side cryptographic verification
+
+  // Associated Business Entities
+  ownerSubscriptionId String?
+  ownerSubscription   OwnerSubscription? @relation(fields: [ownerSubscriptionId], references: [id], onDelete: SetNull)
+  featuredListingId   String?
+  featuredListing     FeaturedListing?   @relation(fields: [featuredListingId], references: [id], onDelete: SetNull)
+
+  errorMessage        String?            @db.Text
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([razorpayOrderId])
+  @@index([status])
+}
+
+// ==============================================================================
+// 13. REPORTING & MODERATION
+// ==============================================================================
+
+model Report {
+  id                String           @id @default(uuid())
+  reporterId        String
+  reporter          User             @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType        ReportTargetType
+  propertyId        String?
+  property          Property?        @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  roommateRequestId String?
+  roommateRequest   RoommateRequest? @relation(fields: [roommateRequestId], references: [id], onDelete: SetNull)
+  reportedUserId    String?
+  reportedUser      User?            @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+
+  reason            ReportReason
+  details           String?          @db.Text
+  status            ReportStatus     @default(PENDING)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([targetType, status])
+  @@index([reporterId])
+}
