@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Building2,
   PlusCircle,
@@ -102,8 +103,14 @@ export function OwnerPropertiesList({
   if (!hasOwnerProfile || totalProperties === 0) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 mb-4 shadow-sm">
-          <Building2 className="h-8 w-8" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white border border-[#E8EAE5] shadow-xs p-1 mb-4">
+          <Image
+            src="/logo.png"
+            alt="StayKro Logo"
+            width={56}
+            height={56}
+            className="h-full w-full object-contain"
+          />
         </div>
         <h2 className="text-2xl font-black text-zinc-900">Welcome to StayKro Owner Hub</h2>
         <p className="mt-2 text-sm text-zinc-600 max-w-md mx-auto">

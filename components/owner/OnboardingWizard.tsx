@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -470,17 +471,28 @@ export function OnboardingWizard({
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Wizard Header & Progress Tabs */}
-      <div className="mb-8 text-center sm:text-left">
-        <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 border border-indigo-200 px-3.5 py-1 text-xs font-bold text-indigo-700 mb-2">
-          <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
-          <span>PG Owner Onboarding</span>
+      <div className="mb-8 flex items-start gap-4">
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl overflow-hidden bg-white shadow-xs border border-[#E8EAE5] p-1 mt-0.5">
+          <Image
+            src="/logo.png"
+            alt="StayKro Logo"
+            width={44}
+            height={44}
+            className="h-full w-full object-contain"
+          />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900">
-          List Your Property on StayKro
-        </h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Complete these 4 simple steps to set up your PG and auto-provision your room inventory.
-        </p>
+        <div>
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-[#eff4ec] border border-[#96BF8A]/40 px-3 py-0.5 text-xs font-bold text-[#00412E] mb-1.5">
+            <Sparkles className="h-3 w-3 text-[#00412E]" />
+            <span>PG Owner Onboarding</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950">
+            List Your Property on StayKro
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm text-zinc-500">
+            Complete these 4 simple steps to set up your PG and auto-provision your room inventory.
+          </p>
+        </div>
       </div>
 
       {/* Stepper Progress Bar */}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   Building2,
   BedDouble,
@@ -207,8 +208,14 @@ export function OwnerDashboardClient({ metrics }: OwnerDashboardClientProps) {
       {/* Zero State Onboarding Prompt */}
       {metrics.totalProperties === 0 ? (
         <div className="rounded-3xl border-2 border-dashed border-indigo-200 bg-gradient-to-b from-indigo-50/50 to-white p-8 sm:p-12 text-center max-w-2xl mx-auto shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-100 mb-4">
-            <Building2 className="h-7 w-7" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white border border-[#E8EAE5] shadow-xs p-1 mb-4">
+            <Image
+              src="/logo.png"
+              alt="StayKro Logo"
+              width={48}
+              height={48}
+              className="h-full w-full object-contain"
+            />
           </div>
           <h2 className="text-xl font-bold text-slate-900">Let&apos;s get your first PG listed</h2>
           <p className="text-xs sm:text-sm text-slate-600 mt-2 max-w-md mx-auto">

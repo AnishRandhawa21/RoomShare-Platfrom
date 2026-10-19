@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -158,17 +159,26 @@ export function AdminSidebar({
       >
         {/* Brand Header */}
         <div className="flex h-16 items-center gap-2.5 px-6 border-b border-zinc-200/80 shrink-0">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-rose-600 to-indigo-600 text-white shadow-sm shadow-rose-200">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-base font-black tracking-tight text-zinc-950 truncate">
-              StayKro<span className="text-rose-600">.</span>
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 leading-none">
-              Admin Portal
-            </span>
-          </div>
+          <Link href="/admin" className="flex items-center gap-2.5 group">
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white shadow-xs border border-zinc-200 transition-transform group-hover:scale-105 p-0.5">
+              <Image
+                src="/logo.png"
+                alt="StayKro Logo"
+                width={36}
+                height={36}
+                className="h-full w-full object-contain"
+                priority
+              />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-base font-black tracking-tight text-zinc-950 truncate group-hover:text-[#00412E] transition-colors leading-tight">
+                StayKro<span className="text-[#96BF8A]">.</span>
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 leading-none">
+                Admin Portal
+              </span>
+            </div>
+          </Link>
         </div>
 
         {/* Navigation items scrollable list */}

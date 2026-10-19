@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -178,14 +179,21 @@ export function OwnerSidebar({
         {/* Brand Header */}
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-5">
           <Link href="/owner" className="flex items-center gap-2.5 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-sm shadow-indigo-100 transition-transform group-hover:scale-105">
-              <Building2 className="h-5 w-5" />
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white shadow-xs border border-[#E8EAE5] transition-transform group-hover:scale-105 p-0.5">
+              <Image
+                src="/logo.png"
+                alt="StayKro Logo"
+                width={36}
+                height={36}
+                className="h-full w-full object-contain"
+                priority
+              />
             </div>
             <div className="flex flex-col">
-              <span className="text-base font-black tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
-                StayKro<span className="text-indigo-600">.</span>
+              <span className="text-base font-black tracking-tight text-slate-900 group-hover:text-[#00412E] transition-colors leading-tight">
+                StayKro<span className="text-[#96BF8A]">.</span>
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 -mt-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#00412E] -mt-0.5">
                 Owner Portal
               </span>
             </div>

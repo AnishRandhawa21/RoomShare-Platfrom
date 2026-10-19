@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Building2,
   CheckCircle2,
@@ -103,11 +104,20 @@ export function InviteLandingCard({
     <div className="mx-auto max-w-2xl rounded-3xl border border-zinc-200 bg-white p-6 sm:p-10 shadow-lg space-y-8">
       {/* Header Banner */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 border border-indigo-200 px-3.5 py-1 text-xs font-bold text-indigo-700">
-          <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white border border-[#E8EAE5] shadow-xs p-1 mb-2">
+          <Image
+            src="/logo.png"
+            alt="StayKro Logo"
+            width={48}
+            height={48}
+            className="h-full w-full object-contain"
+          />
+        </div>
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-[#eff4ec] border border-[#96BF8A]/40 px-3.5 py-1 text-xs font-bold text-[#00412E]">
+          <Sparkles className="h-3.5 w-3.5 text-[#00412E]" />
           <span>Exclusive Administrator Invitation</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950">
           You&apos;re Invited to List Your PG on StayKro
         </h1>
         <p className="text-sm text-zinc-600 max-w-md mx-auto">
