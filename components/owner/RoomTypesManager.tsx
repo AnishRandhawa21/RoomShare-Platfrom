@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PropertySubNav } from "./PropertySubNav";
 import {
@@ -68,6 +68,11 @@ interface RoomTypesManagerProps {
 export function RoomTypesManager({ property }: RoomTypesManagerProps) {
   const router = useRouter();
   const [roomTypes, setRoomTypes] = useState<RoomTypeItem[]>(property.roomTypes || []);
+
+  useEffect(() => {
+    setRoomTypes(property.roomTypes || []);
+  }, [property.roomTypes]);
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingRt, setEditingRt] = useState<RoomTypeItem | null>(null);
 

@@ -95,8 +95,8 @@ export function SinglePropertyMap({
     el.className = "relative flex items-center justify-center cursor-pointer";
     el.innerHTML = `
       <div style="position: relative; display: flex; align-items: center; justify-content: center;">
-        <span style="position: absolute; display: inline-flex; height: 32px; width: 32px; border-radius: 9999px; background-color: #818cf8; opacity: 0.75; animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>
-        <div style="position: relative; display: flex; align-items: center; justify-content: center; height: 38px; width: 38px; border-radius: 9999px; background-color: #4f46e5; color: white; box-shadow: 0 4px 14px rgba(0,0,0,0.3); border: 3px solid white;">
+        <span style="position: absolute; display: inline-flex; height: 32px; width: 32px; border-radius: 9999px; background-color: #96BF8A; opacity: 0.75; animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>
+        <div style="position: relative; display: flex; align-items: center; justify-content: center; height: 38px; width: 38px; border-radius: 9999px; background-color: #00412E; color: white; box-shadow: 0 4px 14px rgba(0,0,0,0.3); border: 3px solid white;">
           <svg style="height: 20px; width: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -108,7 +108,7 @@ export function SinglePropertyMap({
     // Add popup with property title & locality
     const popup = new Popup({ offset: 25, closeButton: false }).setHTML(`
       <div style="padding: 6px 8px; font-family: system-ui, -apple-system, sans-serif;">
-        <p style="font-weight: 800; font-size: 13px; color: #09090b; margin: 0 0 2px 0;">${propertyName}</p>
+        <p style="font-weight: 800; font-size: 13px; color: #00412E; margin: 0 0 2px 0;">${propertyName}</p>
         <p style="font-size: 11px; color: #71717a; margin: 0;">${locality}, ${city}</p>
       </div>
     `);
@@ -170,10 +170,10 @@ export function SinglePropertyMap({
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${addressLine1}, ${locality}, ${city}`)}`;
 
   return (
-    <div className="rounded-3xl border border-zinc-200 bg-white overflow-hidden shadow-xs">
-      <div className="p-6 sm:p-8 border-b border-zinc-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="rounded-3xl border border-[#E8EAE5] bg-white overflow-hidden shadow-xs">
+      <div className="p-6 sm:p-8 border-b border-[#E8EAE5] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-[#00412E] font-bold text-xs uppercase tracking-wider mb-1">
             <MapPin className="h-4 w-4" />
             <span>Location & Neighborhood</span>
           </div>
@@ -188,8 +188,8 @@ export function SinglePropertyMap({
         <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start sm:self-auto">
           {hasValidCoordinates && (
             userDistance ? (
-              <div className="flex items-center gap-1.5 rounded-xl bg-indigo-50 border border-indigo-200/80 px-3.5 py-2 text-xs font-bold text-indigo-700">
-                <Navigation className="h-3.5 w-3.5 text-indigo-600" />
+              <div className="flex items-center gap-1.5 rounded-xl bg-[#eff4ec] border border-[#96BF8A]/40 px-3.5 py-2 text-xs font-bold text-[#00412E]">
+                <Navigation className="h-3.5 w-3.5 text-[#00412E]" />
                 <span>{userDistance} from you</span>
               </div>
             ) : (
@@ -197,12 +197,12 @@ export function SinglePropertyMap({
                 type="button"
                 onClick={handleCheckDistance}
                 disabled={isCalculatingDistance}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#E8EAE5] bg-white px-3.5 py-2 text-xs font-bold text-zinc-700 hover:bg-[#eff4ec] hover:text-[#00412E] transition-colors cursor-pointer"
               >
                 {isCalculatingDistance ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#00412E]" />
                 ) : (
-                  <Compass className="h-3.5 w-3.5 text-indigo-600" />
+                  <Compass className="h-3.5 w-3.5 text-[#00412E]" />
                 )}
                 <span>Check Distance</span>
               </button>
@@ -213,11 +213,11 @@ export function SinglePropertyMap({
             href={googleMapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-xs font-bold text-white hover:bg-zinc-800 transition-colors shadow-xs"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs shadow-[#00412E]/20"
           >
-            <Navigation className="h-3.5 w-3.5 text-indigo-400" />
+            <Navigation className="h-3.5 w-3.5 text-[#96BF8A]" />
             <span>Get Directions</span>
-            <ExternalLink className="h-3 w-3 text-zinc-400" />
+            <ExternalLink className="h-3 w-3 text-[#96BF8A]" />
           </a>
         </div>
       </div>

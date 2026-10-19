@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth/session";
 import { logoutAction } from "@/actions/auth";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import Link from "next/link";
+import Image from "next/image";
 import { Building2, ShieldCheck, LogOut, Home, Bookmark, Users } from "lucide-react";
 
 async function ProfileContent() {
@@ -24,21 +25,27 @@ async function ProfileContent() {
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-sm shadow-indigo-100">
-              <Building2 className="h-4 w-4" />
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white shadow-xs border border-[#E8EAE5] transition-transform group-hover:scale-105">
+              <Image
+                src="/logo.png"
+                alt="StayKro Logo"
+                width={40}
+                height={40}
+                className="h-full w-full object-contain p-0.5"
+              />
             </div>
-            <span className="text-lg font-bold tracking-tight text-zinc-900">
-              StayKro<span className="text-indigo-600 font-black">.</span>
+            <span className="text-lg font-bold tracking-tight text-zinc-900 group-hover:text-[#00412E] transition-colors">
+              StayKro<span className="text-[#96BF8A] font-black">.</span>
             </span>
           </Link>
 
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3.5 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[#E8EAE5] bg-zinc-50 px-3.5 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-[#eff4ec] hover:text-[#00412E] transition-colors"
             >
-              <Home className="h-3.5 w-3.5 text-indigo-600" />
+              <Home className="h-3.5 w-3.5 text-[#00412E]" />
               <span>Explore PGs</span>
             </Link>
 
@@ -62,7 +69,7 @@ async function ProfileContent() {
           <div className="relative overflow-hidden rounded-3xl border border-zinc-200/90 bg-white p-6 sm:p-8 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
               <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white text-xl sm:text-2xl font-black shadow-md shadow-indigo-100 ring-4 ring-indigo-50">
+                <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-[#00412E] text-white text-xl sm:text-2xl font-black shadow-md shadow-[#00412E]/20 ring-4 ring-[#eff4ec]">
                   {initials}
                 </div>
                 <div>

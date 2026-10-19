@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BedDouble,
   ChevronLeft,
@@ -77,8 +78,18 @@ export function RoomInventoryManager({
   initialProperty,
   initialStats,
 }: RoomInventoryManagerProps) {
+  const router = useRouter();
   const [property, setProperty] = useState<PropertyDetails>(initialProperty);
   const [stats, setStats] = useState<InventoryStats>(initialStats);
+
+  useEffect(() => {
+    setProperty(initialProperty);
+  }, [initialProperty]);
+
+  useEffect(() => {
+    setStats(initialStats);
+  }, [initialStats]);
+
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [activeRoomTypeId, setActiveRoomTypeId] = useState<string>("ALL");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -116,13 +127,12 @@ export function RoomInventoryManager({
     currentTypes.forEach((rt) => {
       totalRooms += rt.rooms.length;
       rt.rooms.forEach((r) => {
-        if (r.status === RoomOperationalStatus.AVAILABLE) {
-          availableRoomsCount++;
+        if (r.status !== RoomOperationalStatus.INACTIVE) {
           totalNominalCapacity += rt.occupancy;
           totalOccupiedBeds += r.occupiedBeds;
-        } else if (r.status !== RoomOperationalStatus.INACTIVE) {
-          totalNominalCapacity += rt.occupancy;
-          totalOccupiedBeds += r.occupiedBeds;
+          if (r.status === RoomOperationalStatus.AVAILABLE && r.occupiedBeds < rt.occupancy) {
+            availableRoomsCount++;
+          }
         }
       });
     });
@@ -169,6 +179,7 @@ export function RoomInventoryManager({
 
       setProperty({ ...property, roomTypes: updatedTypes });
       recalculateStats(updatedTypes);
+      router.refresh();
     } else {
       setErrorMsg(res.error || "Failed to update room occupancy.");
     }
@@ -197,6 +208,7 @@ export function RoomInventoryManager({
 
       setProperty({ ...property, roomTypes: updatedTypes });
       recalculateStats(updatedTypes);
+      router.refresh();
     } else {
       setErrorMsg(res.error || "Failed to update room status.");
     }
@@ -218,6 +230,7 @@ export function RoomInventoryManager({
       }));
       setProperty({ ...property, roomTypes: updatedTypes });
       setEditingNotesRoom(null);
+      router.refresh();
     } else {
       setErrorMsg(res.error || "Failed to save room notes.");
     }
@@ -241,6 +254,7 @@ export function RoomInventoryManager({
       });
       setProperty({ ...property, roomTypes: updatedTypes });
       recalculateStats(updatedTypes);
+      router.refresh();
     } else {
       setErrorMsg(res.error || "Failed to delete room.");
     }
@@ -275,6 +289,7 @@ export function RoomInventoryManager({
       setIsAddRoomModalOpen(false);
       setNewRoomNumber("");
       setNewRoomNotes("");
+      router.refresh();
     } else {
       setErrorMsg(res.error || "Failed to add room.");
     }
@@ -315,6 +330,7 @@ export function RoomInventoryManager({
     const res = await togglePropertyStatusAction(property.id, nextStatus);
     if (res.success && res.status) {
       setProperty({ ...property, status: res.status as PropertyStatus });
+      router.refresh();
     }
   };
 
@@ -404,7 +420,7 @@ export function RoomInventoryManager({
           </div>
           <div className="mt-2 text-2xl font-black text-zinc-900">{stats.totalRooms}</div>
           <div className="mt-1 text-[11px] text-zinc-600">
-            {stats.availableRoomsCount} operational
+            {stats.availableRoomsCount} available
           </div>
         </div>
 

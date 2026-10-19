@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -8,8 +8,108 @@ import {
   PlusCircle,
   X,
   Filter,
+  ChevronDown,
+  Check,
+  Utensils,
+  Flame,
 } from "lucide-react";
 import { RoommateCard, type RoommateCardProps } from "@/components/roommate/RoommateCard";
+
+interface DropdownOption {
+  value: string;
+  label: string;
+  badge?: string | number;
+}
+
+function CustomSelect({
+  value,
+  options,
+  onChange,
+  icon,
+  placeholder,
+}: {
+  value: string;
+  options: DropdownOption[];
+  onChange: (val: string) => void;
+  icon?: React.ReactNode;
+  placeholder?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption =
+    options.find((opt) => opt.value.toLowerCase() === value.toLowerCase()) || options[0];
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+          isOpen
+            ? "border-[#00412E] bg-white ring-2 ring-[#96BF8A]/25 text-zinc-950 shadow-xs"
+            : "border-[#E8EAE5] bg-zinc-50/90 text-zinc-800 hover:bg-white hover:border-[#96BF8A]/70 shadow-2xs"
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate min-w-0">
+          {icon && <span className="shrink-0">{icon}</span>}
+          <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+        </div>
+        <ChevronDown
+          className={`h-3.5 w-3.5 text-zinc-400 shrink-0 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-[#00412E]" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 mt-1.5 w-full min-w-[200px] rounded-2xl border border-[#E8EAE5] bg-white p-1.5 shadow-xl ring-1 ring-black/5 animate-in fade-in slide-in-from-top-1 duration-150 z-50">
+          <div className="max-h-60 overflow-y-auto space-y-0.5 pr-0.5">
+            {options.map((opt) => {
+              const isSelected = opt.value.toLowerCase() === value.toLowerCase();
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors cursor-pointer ${
+                    isSelected
+                      ? "bg-[#eff4ec] text-[#00412E] font-bold"
+                      : "text-zinc-700 hover:bg-[#E8EAE5]/40 hover:text-zinc-950"
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected ? (
+                    <Check className="h-3.5 w-3.5 text-[#00412E] shrink-0 ml-2" />
+                  ) : (
+                    opt.badge !== undefined && (
+                      <span className="text-[10px] font-medium text-zinc-400 ml-2">
+                        {opt.badge}
+                      </span>
+                    )
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface RoommateDiscoveryClientProps {
   initialRequests: RoommateCardProps[];
@@ -49,6 +149,39 @@ export function RoommateDiscoveryClient({
   const [selectedSmoking, setSelectedSmoking] = useState<string>("all");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
 
+  const cityOptions = useMemo<DropdownOption[]>(() => {
+    return [
+      { value: "All", label: "All Cities", badge: initialRequests.length },
+      ...activeCities.map((c) => ({
+        value: c,
+        label: c,
+        badge: initialRequests.filter((r) => r.city.toLowerCase() === c.toLowerCase()).length,
+      })),
+    ];
+  }, [activeCities, initialRequests]);
+
+  const genderOptions = useMemo<DropdownOption[]>(() => [
+    { value: "all", label: "All Genders" },
+    { value: "boys", label: "Boys Only" },
+    { value: "girls", label: "Girls Only" },
+    { value: "unisex", label: "Any Gender" },
+  ], []);
+
+  const dietOptions = useMemo<DropdownOption[]>(() => [
+    { value: "all", label: "Any Dietary Habit" },
+    { value: "VEGETARIAN_ONLY", label: "Strict Vegetarian" },
+    { value: "NON_VEG_OK", label: "Non-Veg OK" },
+    { value: "VEGAN", label: "Vegan Only" },
+    { value: "NO_PREFERENCE", label: "No Preference" },
+  ], []);
+
+  const smokingOptions = useMemo<DropdownOption[]>(() => [
+    { value: "all", label: "Any Smoking Policy" },
+    { value: "NON_SMOKER_ONLY", label: "Strict Non-Smoker" },
+    { value: "OUTSIDE_ONLY", label: "Outside Only" },
+    { value: "SMOKING_OK", label: "Smoking OK" },
+  ], []);
+
   // Filter requests locally
   const filteredRequests = useMemo(() => {
     return initialRequests.filter((item) => {
@@ -84,7 +217,7 @@ export function RoommateDiscoveryClient({
         return false;
       }
 
-      // Dietary check
+      // Diet check
       if (selectedDiet !== "all") {
         if (item.preferences?.dietary !== selectedDiet) {
           return false;
@@ -130,12 +263,12 @@ export function RoommateDiscoveryClient({
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Top Banner / Hero Bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 pb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#E8EAE5] pb-6">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
-            <Users className="h-3.5 w-3.5" />
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#eff4ec] px-3 py-1 text-xs font-semibold text-[#00412E] border border-[#96BF8A]/40">
+            <Users className="h-3.5 w-3.5 text-[#96BF8A]" />
             <span>Roommate Share Hub</span>
-            <span className="text-violet-300">•</span>
+            <span className="text-[#96BF8A]">•</span>
             <span className="text-zinc-500 font-normal">Platform Primary USP</span>
           </div>
           <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-950">
@@ -148,9 +281,9 @@ export function RoommateDiscoveryClient({
 
         <Link
           href={currentUserId ? "/roommates/new" : "/login?returnUrl=/roommates/new"}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition-colors hover:bg-violet-700 active:scale-95"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00412E] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition-colors hover:bg-[#002d20] active:scale-95 shadow-[#00412E]/20"
         >
-          <PlusCircle className="h-4 w-4" />
+          <PlusCircle className="h-4 w-4 text-[#96BF8A]" />
           <span>Post Requirement</span>
         </Link>
       </div>
@@ -165,8 +298,8 @@ export function RoommateDiscoveryClient({
           onClick={() => setSelectedCity("All")}
           className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
             selectedCity === "All"
-              ? "bg-violet-600 text-white shadow-2xs"
-              : "bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+              ? "bg-[#00412E] text-white shadow-2xs"
+              : "bg-white border border-[#E8EAE5] text-zinc-700 hover:bg-[#eff4ec]"
           }`}
         >
           All Cities ({initialRequests.length})
@@ -182,8 +315,8 @@ export function RoommateDiscoveryClient({
               onClick={() => setSelectedCity(city)}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                 selectedCity.toLowerCase() === city.toLowerCase()
-                  ? "bg-violet-600 text-white shadow-2xs"
-                  : "bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                  ? "bg-[#00412E] text-white shadow-2xs"
+                  : "bg-white border border-[#E8EAE5] text-zinc-700 hover:bg-[#eff4ec]"
               }`}
             >
               {city} {count > 0 ? `(${count})` : ""}
@@ -193,11 +326,11 @@ export function RoommateDiscoveryClient({
       </div>
 
       {/* Filter Surface */}
-      <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs">
+      <div className="mt-4 rounded-2xl border border-[#E8EAE5] bg-white p-4 shadow-xs">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-12 items-center">
           {/* Locality Search Input */}
-          <div className="sm:col-span-5 flex items-center rounded-xl bg-zinc-50 px-3.5 py-2.5 border border-zinc-200 focus-within:border-violet-500 focus-within:bg-white transition-all">
-            <MapPin className="h-4 w-4 text-violet-600 shrink-0 mr-2" />
+          <div className="sm:col-span-5 flex items-center rounded-xl bg-[#E8EAE5]/30 px-3.5 py-2.5 border border-[#E8EAE5] focus-within:border-[#00412E] focus-within:bg-white transition-all">
+            <MapPin className="h-4 w-4 text-[#00412E] shrink-0 mr-2" />
             <input
               type="text"
               value={searchQuery}
@@ -208,7 +341,7 @@ export function RoommateDiscoveryClient({
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="text-zinc-400 hover:text-zinc-600"
+                className="text-zinc-400 hover:text-zinc-600 cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -216,35 +349,25 @@ export function RoommateDiscoveryClient({
           </div>
 
           {/* City Selector */}
-          <div className="sm:col-span-3 flex items-center rounded-xl bg-zinc-50 px-3 py-2.5 border border-zinc-200 focus-within:border-violet-500 focus-within:bg-white transition-all">
-            <select
-              aria-label="Filter by City"
+          <div className="sm:col-span-3">
+            <CustomSelect
               value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              className="w-full bg-transparent text-xs sm:text-sm font-semibold text-zinc-800 focus:outline-none cursor-pointer"
-            >
-              <option value="All">All Cities</option>
-              {activeCities.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+              options={cityOptions}
+              onChange={(val) => setSelectedCity(val)}
+              icon={<MapPin className="h-3.5 w-3.5 text-[#00412E]" />}
+              placeholder="Select City"
+            />
           </div>
 
           {/* Gender Filter */}
-          <div className="sm:col-span-2 flex items-center rounded-xl bg-zinc-50 px-3 py-2.5 border border-zinc-200 focus-within:border-violet-500 focus-within:bg-white transition-all">
-            <select
-              aria-label="Filter by Gender"
+          <div className="sm:col-span-2">
+            <CustomSelect
               value={selectedGender}
-              onChange={(e) => setSelectedGender(e.target.value)}
-              className="w-full bg-transparent text-xs sm:text-sm font-semibold text-zinc-800 focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Genders</option>
-              <option value="boys">Boys Only</option>
-              <option value="girls">Girls Only</option>
-              <option value="unisex">Any Gender</option>
-            </select>
+              options={genderOptions}
+              onChange={(val) => setSelectedGender(val)}
+              icon={<Users className="h-3.5 w-3.5 text-[#00412E]" />}
+              placeholder="Select Gender"
+            />
           </div>
 
           {/* Advanced Filter Toggle */}
@@ -254,11 +377,11 @@ export function RoommateDiscoveryClient({
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
               className={`w-full flex items-center justify-center gap-1.5 rounded-xl border py-2.5 px-3 text-xs font-bold transition-all cursor-pointer ${
                 showAdvancedFilters || hasActiveFilters
-                  ? "border-violet-300 bg-violet-50 text-violet-700"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                  ? "border-[#96BF8A] bg-[#eff4ec] text-[#00412E]"
+                  : "border-[#E8EAE5] bg-zinc-50/90 text-zinc-700 hover:bg-[#E8EAE5]/40"
               }`}
             >
-              <Filter className="h-3.5 w-3.5" />
+              <Filter className={`h-3.5 w-3.5 ${showAdvancedFilters || hasActiveFilters ? "text-[#00412E]" : "text-zinc-600"}`} />
               <span>Filters {hasActiveFilters && "•"}</span>
             </button>
           </div>
@@ -271,7 +394,7 @@ export function RoommateDiscoveryClient({
             <div>
               <div className="flex items-center justify-between text-xs font-semibold text-zinc-700 mb-1.5">
                 <span>Max Monthly Budget</span>
-                <span className="font-bold text-violet-700">₹{maxBudget.toLocaleString("en-IN")}/mo</span>
+                <span className="font-bold text-[#00412E] bg-[#eff4ec] border border-[#96BF8A]/40 px-2 py-0.5 rounded-md">₹{maxBudget.toLocaleString("en-IN")}/mo</span>
               </div>
               <input
                 type="range"
@@ -280,7 +403,8 @@ export function RoommateDiscoveryClient({
                 step={500}
                 value={maxBudget}
                 onChange={(e) => setMaxBudget(Number(e.target.value))}
-                className="w-full accent-violet-600 cursor-pointer"
+                style={{ accentColor: "#00412E" }}
+                className="w-full accent-[#00412E] cursor-pointer"
               />
               <div className="flex justify-between text-[10px] text-zinc-400 mt-0.5">
                 <span>₹3,000</span>
@@ -293,18 +417,13 @@ export function RoommateDiscoveryClient({
               <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
                 Dietary Habit
               </label>
-              <select
-                aria-label="Filter by Dietary Preference"
+              <CustomSelect
                 value={selectedDiet}
-                onChange={(e) => setSelectedDiet(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-800 focus:outline-none focus:border-violet-500"
-              >
-                <option value="all">Any Dietary Habit</option>
-                <option value="VEGETARIAN_ONLY">Strict Vegetarian</option>
-                <option value="NON_VEG_OK">Non-Veg OK</option>
-                <option value="VEGAN">Vegan Only</option>
-                <option value="NO_PREFERENCE">No Preference</option>
-              </select>
+                options={dietOptions}
+                onChange={(val) => setSelectedDiet(val)}
+                icon={<Utensils className="h-3.5 w-3.5 text-[#00412E]" />}
+                placeholder="Dietary Habit"
+              />
             </div>
 
             {/* Smoking Preference */}
@@ -312,17 +431,13 @@ export function RoommateDiscoveryClient({
               <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
                 Smoking Habit
               </label>
-              <select
-                aria-label="Filter by Smoking Habit"
+              <CustomSelect
                 value={selectedSmoking}
-                onChange={(e) => setSelectedSmoking(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-800 focus:outline-none focus:border-violet-500"
-              >
-                <option value="all">Any Smoking Policy</option>
-                <option value="NON_SMOKER_ONLY">Strict Non-Smoker</option>
-                <option value="OUTSIDE_ONLY">Outside Only</option>
-                <option value="SMOKING_OK">Smoking OK</option>
-              </select>
+                options={smokingOptions}
+                onChange={(val) => setSelectedSmoking(val)}
+                icon={<Flame className="h-3.5 w-3.5 text-[#00412E]" />}
+                placeholder="Smoking Policy"
+              />
             </div>
           </div>
         )}
@@ -335,7 +450,7 @@ export function RoommateDiscoveryClient({
             </span>
             <button
               onClick={resetFilters}
-              className="text-xs font-bold text-violet-600 hover:text-violet-700 underline cursor-pointer"
+              className="text-xs font-bold text-[#00412E] hover:underline cursor-pointer"
             >
               Reset all filters
             </button>
@@ -352,8 +467,8 @@ export function RoommateDiscoveryClient({
         </div>
       ) : (
         <div className="mt-12 rounded-3xl border border-dashed border-zinc-200 p-12 text-center max-w-lg mx-auto bg-zinc-50/50">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-700 mb-4">
-            <Users className="h-6 w-6" />
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eff4ec] text-[#00412E] border border-[#96BF8A]/30 mb-4">
+            <Users className="h-6 w-6 text-[#00412E]" />
           </div>
           <h3 className="text-base font-bold text-zinc-950">
             No roommate posts match your criteria
@@ -365,14 +480,14 @@ export function RoommateDiscoveryClient({
             {hasActiveFilters && (
               <button
                 onClick={resetFilters}
-                className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 cursor-pointer"
+                className="rounded-xl border border-[#E8EAE5] bg-white px-4 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 cursor-pointer"
               >
                 Clear Filters
               </button>
             )}
             <Link
               href={currentUserId ? "/roommates/new" : "/login?returnUrl=/roommates/new"}
-              className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 transition-colors shadow-xs"
+              className="rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs"
             >
               Post Requirement
             </Link>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Phone, ShieldCheck, ArrowRight, Sparkles } from "lucide-react";
+import Image from "next/image";
+import { X, Phone, ShieldCheck, ArrowRight } from "lucide-react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -25,8 +26,14 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </button>
 
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 mb-3">
-            <Sparkles className="h-6 w-6" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-xs border border-[#E8EAE5] mb-3 p-1.5">
+            <Image
+              src="/logo.png"
+              alt="StayKro Logo"
+              width={48}
+              height={48}
+              className="h-full w-full object-contain"
+            />
           </div>
           <h3 className="text-xl font-extrabold text-zinc-900">
             Welcome to StayKro
@@ -44,8 +51,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             >
               Enter Mobile Number
             </label>
-            <div className="flex rounded-2xl border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 focus-within:border-indigo-500 focus-within:bg-white transition-all">
-              <span className="text-sm font-bold text-zinc-700 mr-2 border-r border-zinc-200 pr-2 flex items-center">
+            <div className="flex rounded-2xl border border-[#E8EAE5] bg-[#E8EAE5]/30 px-3.5 py-2.5 focus-within:border-[#00412E] focus-within:bg-white transition-all">
+              <span className="text-sm font-bold text-zinc-700 mr-2 border-r border-[#E8EAE5] pr-2 flex items-center">
                 +91
               </span>
               <input
@@ -68,10 +75,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               );
               onClose();
             }}
-            className="w-full rounded-2xl bg-indigo-600 py-3 text-center text-sm font-bold text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="w-full rounded-2xl bg-[#00412E] py-3 text-center text-sm font-bold text-white shadow-lg shadow-[#00412E]/20 hover:bg-[#002d20] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <span>Continue with OTP</span>
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 text-[#96BF8A]" />
           </button>
 
           <div className="relative my-4 text-center">
@@ -89,7 +96,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               );
               onClose();
             }}
-            className="w-full rounded-2xl border border-zinc-200 bg-white py-2.5 text-center text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+            className="w-full rounded-2xl border border-[#E8EAE5] bg-white py-2.5 text-center text-xs font-bold text-zinc-700 hover:bg-[#eff4ec] transition-all flex items-center justify-center gap-2.5 cursor-pointer"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path
@@ -114,7 +121,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
 
         <div className="mt-5 text-center text-[11px] text-zinc-400 flex items-center justify-center gap-1">
-          <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+          <ShieldCheck className="h-3.5 w-3.5 text-[#00412E]" />
           <span>Your contact info is never shared without your permission</span>
         </div>
       </div>

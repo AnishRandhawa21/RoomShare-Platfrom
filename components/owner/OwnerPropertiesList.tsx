@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -48,6 +48,11 @@ export function OwnerPropertiesList({
   hasOwnerProfile,
 }: OwnerPropertiesListProps) {
   const [properties, setProperties] = useState<PropertyItem[]>(initialProperties);
+
+  useEffect(() => {
+    setProperties(initialProperties);
+  }, [initialProperties]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);

@@ -260,12 +260,12 @@ export function PropertyMap({
       el.style.cssText =
         "position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; z-index: 50;";
       el.innerHTML = `
-        <div class="gps-pulse-circle" style="position: absolute; inset: 0; border-radius: 9999px; background-color: rgba(59, 130, 246, 0.4);"></div>
-        <div style="position: relative; width: 14px; height: 14px; border-radius: 9999px; background-color: #2563eb; border: 2.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.35);"></div>
+        <div class="gps-pulse-circle" style="position: absolute; inset: 0; border-radius: 9999px; background-color: rgba(150, 191, 138, 0.45);"></div>
+        <div style="position: relative; width: 14px; height: 14px; border-radius: 9999px; background-color: #00412E; border: 2.5px solid #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.35);"></div>
       `;
 
       const popup = new Popup({ offset: 16, closeButton: false }).setHTML(
-        `<div style="font-size: 11px; font-weight: 700; color: #1e3a8a; padding: 2px 4px; font-family: sans-serif;">📍 You are here</div>`
+        `<div style="font-size: 11px; font-weight: 700; color: #00412E; padding: 2px 4px; font-family: sans-serif;">📍 You are here</div>`
       );
 
       const marker = new Marker({ element: el })
@@ -323,7 +323,7 @@ export function PropertyMap({
           ? "#2563eb"
           : prop.genderPolicy === "GIRLS"
           ? "#e11d48"
-          : "#18181b";
+          : "#00412E";
 
       // Create custom interactive price pill marker DOM element
       const el = document.createElement("div");
@@ -354,7 +354,7 @@ export function PropertyMap({
         transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.15s ease;
         ${
           isSelected
-            ? "transform: scale(1.15); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.6), 0 6px 20px rgba(0,0,0,0.4);"
+            ? "transform: scale(1.15); box-shadow: 0 0 0 4px rgba(0, 65, 46, 0.5), 0 6px 20px rgba(0,0,0,0.4);"
             : "transform: scale(1);"
         }
       `;
@@ -488,15 +488,15 @@ export function PropertyMap({
           onClick={handleCenterOnUser}
           className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold shadow-lg border transition-all cursor-pointer active:scale-95 ${
             userLocation
-              ? "bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700 shadow-indigo-200"
-              : "bg-white text-zinc-800 border-zinc-200 hover:bg-zinc-50 hover:text-indigo-600"
+              ? "bg-[#00412E] text-white border-[#00412E] hover:bg-[#002d20] shadow-[#00412E]/20"
+              : "bg-white text-zinc-800 border-[#E8EAE5] hover:bg-[#eff4ec] hover:text-[#00412E]"
           }`}
           title={userLocation ? "Center map on my location" : "Find properties near my location"}
         >
           {isLocating ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[#00412E]" />
           ) : (
-            <Navigation className={`h-3.5 w-3.5 ${userLocation ? "text-white" : "text-indigo-600"}`} />
+            <Navigation className={`h-3.5 w-3.5 ${userLocation ? "text-white" : "text-[#00412E]"}`} />
           )}
           <span>{userLocation ? "My Location" : "Near Me"}</span>
         </button>
@@ -508,9 +508,9 @@ export function PropertyMap({
           <button
             type="button"
             onClick={handleSearchViewport}
-            className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold text-zinc-900 shadow-lg border border-zinc-200 hover:bg-zinc-50 transition-all cursor-pointer hover:shadow-xl active:scale-95"
+            className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold text-zinc-900 shadow-lg border border-[#E8EAE5] hover:bg-[#eff4ec] transition-all cursor-pointer hover:shadow-xl active:scale-95"
           >
-            <RefreshCw className="h-3.5 w-3.5 text-indigo-600" />
+            <RefreshCw className="h-3.5 w-3.5 text-[#00412E]" />
             <span>Search this area</span>
           </button>
         </div>
@@ -519,7 +519,7 @@ export function PropertyMap({
       {/* Interactive Property Preview Card Popup */}
       {activePopupProperty && (
         <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-20 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl backdrop-blur-md">
+          <div className="rounded-2xl border border-[#E8EAE5] bg-white p-3 shadow-xl backdrop-blur-md">
             <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-zinc-100 mb-2.5">
               {activePopupProperty.coverImageUrl ? (
                 <img
@@ -547,7 +547,7 @@ export function PropertyMap({
                       ? "bg-blue-600"
                       : activePopupProperty.genderPolicy === "GIRLS"
                       ? "bg-rose-600"
-                      : "bg-emerald-600"
+                      : "bg-[#00412E]"
                   }`}
                 >
                   {activePopupProperty.genderPolicy === "BOYS"
@@ -573,7 +573,7 @@ export function PropertyMap({
                   </span>
                 </div>
                 {activePopupDistance && (
-                  <span className="shrink-0 flex items-center gap-1 font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full text-[10px]">
+                  <span className="shrink-0 flex items-center gap-1 font-bold text-[#00412E] bg-[#eff4ec] px-2 py-0.5 rounded-full text-[10px]">
                     <Navigation className="h-2.5 w-2.5" /> {activePopupDistance}
                   </span>
                 )}
@@ -582,12 +582,12 @@ export function PropertyMap({
                 {activePopupProperty.name}
               </h4>
 
-              <div className="mt-2 flex items-center justify-between border-t border-zinc-100 pt-2">
+              <div className="mt-2 flex items-center justify-between border-t border-[#E8EAE5] pt-2">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-zinc-400 block">
                     Starts at
                   </span>
-                  <span className="text-sm font-black text-indigo-600">
+                  <span className="text-sm font-black text-[#00412E]">
                     ₹{activePopupProperty.startingPrice.toLocaleString("en-IN")}
                     <span className="text-[11px] font-semibold text-zinc-400">/mo</span>
                   </span>
@@ -595,7 +595,7 @@ export function PropertyMap({
 
                 <Link
                   href={`/property/${activePopupProperty.slug}`}
-                  className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-xs"
+                  className="inline-flex items-center gap-1 rounded-xl bg-[#00412E] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs"
                 >
                   <span>View Details</span>
                   <ExternalLink className="h-3 w-3" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PropertySubNav } from "./PropertySubNav";
@@ -28,6 +28,11 @@ interface PropertyDetailClientProps {
 export function PropertyDetailClient({ property }: PropertyDetailClientProps) {
   const router = useRouter();
   const [currentStatus, setCurrentStatus] = useState<string>(property.status);
+
+  useEffect(() => {
+    setCurrentStatus(property.status);
+  }, [property.status]);
+
   const [isPublishing, setIsPublishing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -42,11 +47,15 @@ export function PropertyDetailClient({ property }: PropertyDetailClientProps) {
   let occupiedBeds = 0;
 
   property.roomTypes?.forEach((rt: any) => {
-    rt.rooms?.forEach((r: any) => {
-      totalRooms += 1;
-      totalBeds += rt.occupancy;
-      occupiedBeds += r.occupiedBeds;
-    });
+    if (rt.isActive !== false) {
+      rt.rooms?.forEach((r: any) => {
+        if (r.status !== "INACTIVE") {
+          totalRooms += 1;
+          totalBeds += rt.occupancy;
+          occupiedBeds += r.occupiedBeds;
+        }
+      });
+    }
   });
 
   const availableBeds = Math.max(0, totalBeds - occupiedBeds);

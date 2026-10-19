@@ -44,6 +44,7 @@ export function OwnerContactCard({
   owner,
   roomTypes,
   selectedRoomTypeId,
+  onClearSelectedRoomType,
   currentUser,
 }: OwnerContactCardProps) {
   const [showEnquiryForm, setShowEnquiryForm] = useState(false);
@@ -111,18 +112,83 @@ export function OwnerContactCard({
     }
   };
 
+  const activeRoomTypes = roomTypes || [];
+
+  // Determine which room type to feature:
+  const selectedRoomType = activeRoomTypes.find((rt) => rt.id === selectedRoomTypeId);
+
+  // If no room type is selected, find the room type that gives the lowest per-person rent:
+  let defaultRoomType: RoomTypeData | null = null;
+  let lowestPerPerson = Infinity;
+  for (const rt of activeRoomTypes) {
+    const perPerson = rt.occupancy > 1 ? Math.round(rt.monthlyRent / rt.occupancy) : rt.monthlyRent;
+    if (perPerson < lowestPerPerson) {
+      lowestPerPerson = perPerson;
+      defaultRoomType = rt;
+    }
+  }
+
+  const currentRoomType = selectedRoomType || defaultRoomType;
+
+  // Compute displayPrice (per-bed / split price if sharing), originalPrice (total room rent to cross out), and occupancyBadge
+  let displayPrice = property.startingPrice || 0;
+  let originalPrice: number | null = null;
+  let occupancyBadge: string | null = null;
+
+  if (currentRoomType) {
+    if (currentRoomType.occupancy > 1) {
+      displayPrice = Math.round(currentRoomType.monthlyRent / currentRoomType.occupancy);
+      originalPrice = currentRoomType.monthlyRent;
+      occupancyBadge = `${currentRoomType.occupancy}-Sharing`;
+    } else {
+      displayPrice = currentRoomType.monthlyRent;
+      originalPrice = null;
+      occupancyBadge = "Private Room";
+    }
+  }
+
   return (
     <div className="sticky top-24 rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl shadow-zinc-200/50 space-y-6">
       {/* Price Header */}
       <div>
-        <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-          Monthly Rent Starts At
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+            {selectedRoomType ? `${selectedRoomType.name} Rent` : "Monthly Rent Starts At"}
+          </span>
+          {selectedRoomType && (
+            <button
+              type="button"
+              onClick={onClearSelectedRoomType}
+              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+            >
+              Reset to All
+            </button>
+          )}
+        </div>
+
+        {/* Strikethrough full room price + Sharing badge (matching home screen) */}
+        {(originalPrice || occupancyBadge) && (
+          <div className="flex items-center gap-2 mt-1.5">
+            {originalPrice && originalPrice > displayPrice && (
+              <span className="text-sm font-semibold text-zinc-400 line-through">
+                ₹{originalPrice.toLocaleString("en-IN")}
+              </span>
+            )}
+            {occupancyBadge && (
+              <span className="text-[10px] font-bold text-[#00412E] bg-[#96BF8A]/20 px-2 py-0.5 rounded-md border border-[#96BF8A]/50">
+                {occupancyBadge}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="flex items-baseline gap-1 mt-1">
           <span className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950">
-            ₹{property.startingPrice.toLocaleString("en-IN")}
+            ₹{displayPrice.toLocaleString("en-IN")}
           </span>
-          <span className="text-sm font-semibold text-zinc-500">/ month</span>
+          <span className="text-sm font-semibold text-zinc-500">
+            {currentRoomType && currentRoomType.occupancy > 1 ? "/ bed / month" : "/ month"}
+          </span>
         </div>
         <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 w-fit">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
@@ -131,9 +197,9 @@ export function OwnerContactCard({
       </div>
 
       {/* Owner Badge */}
-      <div className="rounded-2xl bg-zinc-50 p-4 border border-zinc-100 flex items-center justify-between">
+      <div className="rounded-2xl bg-[#E8EAE5]/40 p-4 border border-[#E8EAE5] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#eff4ec] text-[#00412E] font-bold text-sm border border-[#96BF8A]/30">
             {owner.fullName ? owner.fullName[0].toUpperCase() : "O"}
           </div>
           <div>
@@ -144,7 +210,7 @@ export function OwnerContactCard({
           </div>
         </div>
         {owner.isVerified && (
-          <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5">
+          <span className="rounded-full bg-[#eff4ec] text-[#00412E] text-[10px] font-bold px-2 py-0.5 border border-[#96BF8A]/40">
             Verified Owner
           </span>
         )}
@@ -155,7 +221,7 @@ export function OwnerContactCard({
         {/* Direct Call */}
         <a
           href={`tel:${property.contactPhone}`}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-3.5 px-4 text-xs sm:text-sm font-bold text-white hover:bg-zinc-800 active:scale-95 transition-all shadow-md shadow-zinc-200 cursor-pointer"
+          className="flex items-center justify-center gap-2 rounded-2xl bg-[#00412E] py-3.5 px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#002d20] active:scale-95 transition-all shadow-md shadow-[#00412E]/20 cursor-pointer"
         >
           <Phone className="h-4 w-4" />
           <span>Call Owner</span>
@@ -189,7 +255,7 @@ export function OwnerContactCard({
         <button
           type="button"
           onClick={() => setShowEnquiryForm(!showEnquiryForm)}
-          className="w-full rounded-2xl border border-indigo-200 bg-indigo-50/70 py-3 text-xs sm:text-sm font-bold text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer"
+          className="w-full rounded-2xl border border-[#96BF8A]/40 bg-[#eff4ec] py-3 text-xs sm:text-sm font-bold text-[#00412E] hover:bg-[#dce7d8] transition-colors cursor-pointer"
         >
           {showEnquiryForm ? "Hide Quick Enquiry" : "Book a Visit / Send Enquiry"}
         </button>
@@ -197,9 +263,9 @@ export function OwnerContactCard({
 
       {/* Quick Enquiry Form */}
       {showEnquiryForm && (
-        <form onSubmit={handleEnquirySubmit} className="space-y-3 pt-3 border-t border-zinc-100">
+        <form onSubmit={handleEnquirySubmit} className="space-y-3 pt-3 border-t border-[#E8EAE5]">
           <div className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+            <Sparkles className="h-3.5 w-3.5 text-[#00412E]" />
             <span>Send Direct Booking Enquiry</span>
           </div>
 
@@ -231,7 +297,7 @@ export function OwnerContactCard({
               required
               defaultValue={currentUser?.profile?.fullName || ""}
               placeholder="e.g. Rahul Sharma"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-[#E8EAE5] bg-[#E8EAE5]/30 px-3 py-2 text-xs font-semibold text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-[#00412E] focus:outline-none"
             />
           </div>
 
@@ -245,7 +311,7 @@ export function OwnerContactCard({
               type="tel"
               required
               placeholder="e.g. 9876543210"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-[#E8EAE5] bg-[#E8EAE5]/30 px-3 py-2 text-xs font-semibold text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-[#00412E] focus:outline-none"
             />
           </div>
 
@@ -257,7 +323,7 @@ export function OwnerContactCard({
               id="enquiry-roomtype"
               name="roomTypeId"
               defaultValue={selectedRoomTypeId || ""}
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white focus:border-indigo-500 focus:outline-none cursor-pointer"
+              className="w-full rounded-xl border border-[#E8EAE5] bg-[#E8EAE5]/30 px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white focus:border-[#00412E] focus:outline-none cursor-pointer"
             >
               <option value="">Any available room</option>
               {roomTypes.map((rt) => {
@@ -280,7 +346,7 @@ export function OwnerContactCard({
               id="enquiry-date"
               name="moveInDate"
               type="date"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-[#E8EAE5] bg-[#E8EAE5]/30 px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white focus:border-[#00412E] focus:outline-none"
             />
           </div>
 
@@ -293,16 +359,16 @@ export function OwnerContactCard({
               name="message"
               rows={2}
               placeholder="e.g. I work in Tech Park, looking to visit this Saturday."
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-[#E8EAE5] bg-[#E8EAE5]/30 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:border-[#00412E] focus:outline-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white hover:bg-indigo-700 active:scale-95 transition-all shadow-sm cursor-pointer disabled:opacity-70"
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#00412E] py-3 text-xs font-bold text-white hover:bg-[#002d20] active:scale-95 transition-all shadow-sm shadow-[#00412E]/20 cursor-pointer disabled:opacity-70"
           >
-            <Send className="h-3.5 w-3.5" />
+            <Send className="h-3.5 w-3.5 text-[#96BF8A]" />
             <span>{isSubmitting ? "Sending enquiry..." : "Submit Enquiry"}</span>
           </button>
         </form>

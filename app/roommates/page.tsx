@@ -111,7 +111,7 @@ export default async function RoommatesPage({ searchParams }: RoommatesPageProps
           fallback={
             <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 text-center text-zinc-500">
               <div className="flex justify-center mb-4">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#00412E] border-t-transparent" />
               </div>
               <p className="text-xs font-semibold">Loading roommate share opportunities...</p>
             </div>

@@ -102,44 +102,34 @@ export async function getLiveProperties(params?: {
     });
 
     return properties.map((p) => {
-      let minPerPersonRent = Infinity;
-      let originalPrice: number | null = null;
-      let bestSharingOccupancy: number | null = null;
+      let chosenRoomType: { name: string; monthlyRent: number; occupancy: number } | null = null;
+      let lowestPerPerson = Infinity;
 
       if (p.roomTypes.length > 0) {
         for (const rt of p.roomTypes) {
-          // If room has occupancy > 1, the split rent per person is rt.monthlyRent / rt.occupancy
-          const splitRent = rt.occupancy > 1 ? Math.round(rt.monthlyRent / rt.occupancy) : rt.monthlyRent;
-          if (splitRent < minPerPersonRent) {
-            minPerPersonRent = splitRent;
-            bestSharingOccupancy = rt.occupancy;
-            // Original price is total room rent if sharing
-            if (rt.occupancy > 1 && rt.monthlyRent > splitRent) {
-              originalPrice = rt.monthlyRent;
-            }
+          const perPerson =
+            rt.occupancy > 1 ? Math.round(rt.monthlyRent / rt.occupancy) : rt.monthlyRent;
+          if (perPerson < lowestPerPerson) {
+            lowestPerPerson = perPerson;
+            chosenRoomType = rt;
           }
         }
-
-        // If there's a higher private room or full room rate, use it as anchor
-        const maxRoomRent = Math.max(...p.roomTypes.map((r) => r.monthlyRent));
-        if (maxRoomRent > minPerPersonRent && (!originalPrice || maxRoomRent > originalPrice)) {
-          originalPrice = maxRoomRent;
-        }
       }
 
-      // If startingPrice is manually set on the property
-      if (p.startingPrice && p.startingPrice > 0) {
-        if (minPerPersonRent === Infinity) {
-          minPerPersonRent = p.startingPrice;
-        } else if (p.startingPrice > minPerPersonRent && (!originalPrice || p.startingPrice > originalPrice)) {
-          originalPrice = p.startingPrice;
-        } else if (p.startingPrice < minPerPersonRent) {
-          minPerPersonRent = p.startingPrice;
-        }
-      }
+      let minRent = 0;
+      let originalPrice: number | null = null;
+      let bestSharingOccupancy: number | null = null;
 
-      if (minPerPersonRent === Infinity) {
-        minPerPersonRent = 0;
+      if (chosenRoomType) {
+        if (chosenRoomType.occupancy > 1) {
+          minRent = Math.round(chosenRoomType.monthlyRent / chosenRoomType.occupancy);
+          originalPrice = chosenRoomType.monthlyRent;
+          bestSharingOccupancy = chosenRoomType.occupancy;
+        } else {
+          minRent = chosenRoomType.monthlyRent;
+        }
+      } else {
+        minRent = p.startingPrice || 0;
       }
 
       const uniqueRoomTypes = Array.from(
@@ -153,8 +143,8 @@ export async function getLiveProperties(params?: {
         locality: p.locality,
         city: p.city,
         genderPolicy: p.genderPolicy,
-        startingPrice: minPerPersonRent,
-        originalPrice: originalPrice && originalPrice > minPerPersonRent ? originalPrice : null,
+        startingPrice: minRent,
+        originalPrice: originalPrice && originalPrice > minRent ? originalPrice : null,
         bestSharingOccupancy: bestSharingOccupancy && bestSharingOccupancy > 1 ? bestSharingOccupancy : null,
         foodIncluded: p.foodOffering === "NO_FOOD" ? false : Boolean(p.foodIncluded),
         coverImageUrl: p.images[0]?.url || null,

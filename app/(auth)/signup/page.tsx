@@ -2,6 +2,7 @@
 
 import { useActionState, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { signUpAction, type AuthActionResult } from "@/actions/auth";
 import { Building2, ArrowRight, Lock, Mail, User, Phone, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -39,7 +40,7 @@ function SignUpForm() {
           >
             Full Name
           </label>
-          <div className="relative rounded-2xl border border-zinc-200 bg-zinc-50 focus-within:border-indigo-500 focus-within:bg-white transition-all">
+          <div className="relative rounded-2xl border border-[#E8EAE5] bg-[#E8EAE5]/30 focus-within:border-[#00412E] focus-within:bg-white transition-all">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <User className="h-4 w-4 text-zinc-400" />
             </div>
@@ -61,7 +62,7 @@ function SignUpForm() {
           >
             Email Address
           </label>
-          <div className="relative rounded-2xl border border-zinc-200 bg-zinc-50 focus-within:border-indigo-500 focus-within:bg-white transition-all">
+          <div className="relative rounded-2xl border border-[#E8EAE5] bg-[#E8EAE5]/30 focus-within:border-[#00412E] focus-within:bg-white transition-all">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Mail className="h-4 w-4 text-zinc-400" />
             </div>
@@ -84,7 +85,7 @@ function SignUpForm() {
           >
             Mobile Number <span className="font-normal text-zinc-400">(Optional)</span>
           </label>
-          <div className="relative rounded-2xl border border-zinc-200 bg-zinc-50 focus-within:border-indigo-500 focus-within:bg-white transition-all">
+          <div className="relative rounded-2xl border border-[#E8EAE5] bg-[#E8EAE5]/30 focus-within:border-[#00412E] focus-within:bg-white transition-all">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Phone className="h-4 w-4 text-zinc-400" />
             </div>
@@ -105,7 +106,7 @@ function SignUpForm() {
           >
             Password <span className="font-normal text-zinc-400">(Min. 6 chars)</span>
           </label>
-          <div className="relative rounded-2xl border border-zinc-200 bg-zinc-50 focus-within:border-indigo-500 focus-within:bg-white transition-all">
+          <div className="relative rounded-2xl border border-[#E8EAE5] bg-[#E8EAE5]/30 focus-within:border-[#00412E] focus-within:bg-white transition-all">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Lock className="h-4 w-4 text-zinc-400" />
             </div>
@@ -124,14 +125,14 @@ function SignUpForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-70 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#00412E] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#00412E]/20 hover:bg-[#002d20] active:scale-95 transition-all disabled:opacity-70 cursor-pointer"
           >
             {isPending ? (
               <span>Creating Account...</span>
             ) : (
               <>
                 <span>Create Account</span>
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 text-[#96BF8A]" />
               </>
             )}
           </button>
@@ -142,7 +143,7 @@ function SignUpForm() {
         Already have an account?{" "}
         <Link
           href={returnUrl !== "/profile" ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : "/login"}
-          className="font-bold text-indigo-600 hover:underline"
+          className="font-bold text-[#00412E] hover:underline"
         >
           Sign in
         </Link>
@@ -153,14 +154,21 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-zinc-50">
+    <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[#E8EAE5]/30">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Link href="/" className="flex items-center justify-center gap-2 group">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-md shadow-indigo-100 transition-transform group-hover:scale-105">
-            <Building2 className="h-6 w-6" />
+        <Link href="/" className="flex items-center justify-center gap-2.5 group">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl overflow-hidden bg-white shadow-sm border border-[#E8EAE5] transition-transform group-hover:scale-105">
+            <Image
+              src="/logo.png"
+              alt="StayKro Logo"
+              width={48}
+              height={48}
+              className="h-full w-full object-contain p-1"
+              priority
+            />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-zinc-900">
-            StayKro<span className="text-indigo-600 font-black">.</span>
+          <span className="text-2xl font-bold tracking-tight text-zinc-900 group-hover:text-[#00412E] transition-colors">
+            StayKro<span className="text-[#96BF8A] font-black">.</span>
           </span>
         </Link>
         <h2 className="mt-6 text-center text-2xl font-extrabold tracking-tight text-zinc-950 sm:text-3xl">

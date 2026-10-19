@@ -67,13 +67,43 @@ export function PropertyDetailClient({
 }: PropertyDetailClientProps) {
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string | null>(null);
 
+  const selectedRoomType = property.roomTypes.find((rt) => rt.id === selectedRoomTypeId);
+
+  let defaultRoomType: (typeof property.roomTypes)[0] | null = null;
+  let lowestPerPerson = Infinity;
+  for (const rt of property.roomTypes) {
+    const perPerson = rt.occupancy > 1 ? Math.round(rt.monthlyRent / rt.occupancy) : rt.monthlyRent;
+    if (perPerson < lowestPerPerson) {
+      lowestPerPerson = perPerson;
+      defaultRoomType = rt;
+    }
+  }
+
+  const currentRoomType = selectedRoomType || defaultRoomType;
+
+  let mobilePrice = property.startingPrice || 0;
+  let mobileOriginalPrice: number | null = null;
+  let mobileOccupancyBadge: string | null = null;
+
+  if (currentRoomType) {
+    if (currentRoomType.occupancy > 1) {
+      mobilePrice = Math.round(currentRoomType.monthlyRent / currentRoomType.occupancy);
+      mobileOriginalPrice = currentRoomType.monthlyRent;
+      mobileOccupancyBadge = `${currentRoomType.occupancy}-Sharing`;
+    } else {
+      mobilePrice = currentRoomType.monthlyRent;
+      mobileOriginalPrice = null;
+      mobileOccupancyBadge = "Private Room";
+    }
+  }
+
   const handleSelectRoomType = (roomTypeId: string) => {
     setSelectedRoomTypeId(roomTypeId);
     document.getElementById("contact-sidebar")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-50/50 text-zinc-900 selection:bg-indigo-50 selection:text-indigo-900">
+    <div className="min-h-screen flex flex-col bg-zinc-50/50 text-zinc-900 selection:bg-[#96BF8A]/30 selection:text-[#00412E]">
       {/* 1. Header Navigation */}
       <Header
         selectedCity={property.city}
@@ -132,8 +162,8 @@ export function PropertyDetailClient({
                     </span>
 
                     {property.isVerified && (
-                      <span className="rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 text-xs font-bold flex items-center gap-1">
-                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="rounded-full bg-[#eff4ec] text-[#00412E] border border-[#96BF8A]/40 px-3 py-1 text-xs font-bold flex items-center gap-1">
+                        <ShieldCheck className="h-3.5 w-3.5 text-[#00412E]" />
                         <span>Verified Stay</span>
                       </span>
                     )}
@@ -151,7 +181,7 @@ export function PropertyDetailClient({
                 </h1>
 
                 <div className="flex items-center gap-1.5 text-xs sm:text-sm text-zinc-500">
-                  <MapPin className="h-4 w-4 text-indigo-600 shrink-0" />
+                  <MapPin className="h-4 w-4 text-[#00412E] shrink-0" />
                   <span>
                     {property.addressLine1}
                     {property.addressLine2 ? `, ${property.addressLine2}` : ""},{" "}
@@ -224,7 +254,7 @@ export function PropertyDetailClient({
                         key={idx}
                         className="flex items-center gap-2.5 rounded-2xl bg-zinc-50 p-3 text-xs font-semibold text-zinc-700 border border-zinc-100"
                       >
-                        <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <CheckCircle2 className="h-4 w-4 text-[#00412E] shrink-0" />
                         <span>{rule}</span>
                       </div>
                     ))}
@@ -274,10 +304,23 @@ export function PropertyDetailClient({
       {/* 3. Mobile Floating Contact Bar */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 p-3 px-4 flex lg:hidden items-center justify-between gap-3 shadow-lg">
         <div>
-          <span className="text-[10px] uppercase font-bold text-zinc-400 block">Starts at</span>
-          <div className="text-base font-black text-zinc-950">
-            ₹{property.startingPrice.toLocaleString("en-IN")}
-            <span className="text-xs font-normal text-zinc-500">/mo</span>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            {mobileOriginalPrice && mobileOriginalPrice > mobilePrice && (
+              <span className="text-[11px] font-semibold text-zinc-400 line-through">
+                ₹{mobileOriginalPrice.toLocaleString("en-IN")}
+              </span>
+            )}
+            {mobileOccupancyBadge && (
+              <span className="text-[9px] font-bold text-[#00412E] bg-[#96BF8A]/20 px-1.5 py-0.5 rounded border border-[#96BF8A]/40">
+                {mobileOccupancyBadge}
+              </span>
+            )}
+          </div>
+          <div className="text-base font-black text-zinc-950 flex items-baseline gap-1">
+            <span>₹{mobilePrice.toLocaleString("en-IN")}</span>
+            <span className="text-xs font-normal text-zinc-500">
+              {currentRoomType && currentRoomType.occupancy > 1 ? "/bed" : "/mo"}
+            </span>
           </div>
         </div>
 

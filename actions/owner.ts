@@ -426,13 +426,12 @@ export async function getPropertyInventoryAction(propertyId: string) {
     property.roomTypes.forEach((rt) => {
       totalRooms += rt.rooms.length;
       rt.rooms.forEach((room) => {
-        if (room.status === RoomOperationalStatus.AVAILABLE) {
-          availableRoomsCount++;
+        if (room.status !== RoomOperationalStatus.INACTIVE) {
           totalNominalCapacity += rt.occupancy;
           totalOccupiedBeds += room.occupiedBeds;
-        } else if (room.status !== RoomOperationalStatus.INACTIVE) {
-          totalNominalCapacity += rt.occupancy;
-          totalOccupiedBeds += room.occupiedBeds;
+          if (room.status === RoomOperationalStatus.AVAILABLE && room.occupiedBeds < rt.occupancy) {
+            availableRoomsCount++;
+          }
         }
       });
     });
@@ -517,8 +516,17 @@ export async function updateRoomInventoryAction(
       },
     });
 
-    revalidatePath(`/owner/properties/${existingRoom.roomType.propertyId}/rooms`);
+    const propId = existingRoom.roomType.propertyId;
+    const slug = existingRoom.roomType.property.slug;
+
+    revalidatePath(`/owner/properties/${propId}/rooms`);
+    revalidatePath(`/owner/properties/${propId}`);
+    revalidatePath(`/owner/properties/${propId}/room-types`);
     revalidatePath("/owner/properties");
+    revalidatePath("/owner/rooms");
+    revalidatePath("/owner");
+    if (slug) revalidatePath(`/property/${slug}`);
+    revalidatePath("/");
 
     return { success: true, room: updatedRoom };
   } catch (error: unknown) {
@@ -586,8 +594,17 @@ export async function addSingleRoomAction(
       },
     });
 
-    revalidatePath(`/owner/properties/${roomType.propertyId}/rooms`);
+    const propId = roomType.propertyId;
+    const slug = roomType.property.slug;
+
+    revalidatePath(`/owner/properties/${propId}/rooms`);
+    revalidatePath(`/owner/properties/${propId}`);
+    revalidatePath(`/owner/properties/${propId}/room-types`);
     revalidatePath("/owner/properties");
+    revalidatePath("/owner/rooms");
+    revalidatePath("/owner");
+    if (slug) revalidatePath(`/property/${slug}`);
+    revalidatePath("/");
 
     return { success: true, room: newRoom };
   } catch (error: unknown) {
@@ -691,8 +708,16 @@ export async function addRoomTypeWithInventoryAction(
       return newRoomType;
     });
 
+    const slug = property.slug;
+
     revalidatePath(`/owner/properties/${propertyId}/rooms`);
+    revalidatePath(`/owner/properties/${propertyId}`);
+    revalidatePath(`/owner/properties/${propertyId}/room-types`);
     revalidatePath("/owner/properties");
+    revalidatePath("/owner/rooms");
+    revalidatePath("/owner");
+    if (slug) revalidatePath(`/property/${slug}`);
+    revalidatePath("/");
 
     return { success: true, roomType: result };
   } catch (error: unknown) {
@@ -728,7 +753,13 @@ export async function togglePropertyStatusAction(
     });
 
     revalidatePath(`/owner/properties/${propertyId}/rooms`);
+    revalidatePath(`/owner/properties/${propertyId}`);
+    revalidatePath(`/owner/properties/${propertyId}/room-types`);
     revalidatePath("/owner/properties");
+    revalidatePath("/owner/rooms");
+    revalidatePath("/owner");
+    if (property.slug) revalidatePath(`/property/${property.slug}`);
+    revalidatePath("/");
 
     return { success: true, status: updated.status };
   } catch (error: unknown) {
@@ -764,8 +795,17 @@ export async function deleteRoomAction(roomId: string) {
       where: { id: roomId },
     });
 
-    revalidatePath(`/owner/properties/${room.roomType.propertyId}/rooms`);
+    const propId = room.roomType.propertyId;
+    const slug = room.roomType.property.slug;
+
+    revalidatePath(`/owner/properties/${propId}/rooms`);
+    revalidatePath(`/owner/properties/${propId}`);
+    revalidatePath(`/owner/properties/${propId}/room-types`);
     revalidatePath("/owner/properties");
+    revalidatePath("/owner/rooms");
+    revalidatePath("/owner");
+    if (slug) revalidatePath(`/property/${slug}`);
+    revalidatePath("/");
 
     return { success: true };
   } catch (error: unknown) {
@@ -1448,7 +1488,12 @@ export async function updateOwnerRoomTypeAction(
 
     revalidatePath(`/owner/properties/${rt.propertyId}/room-types`);
     revalidatePath(`/owner/properties/${rt.propertyId}/rooms`);
+    revalidatePath(`/owner/properties/${rt.propertyId}`);
     revalidatePath("/owner/properties");
+    revalidatePath("/owner/rooms");
+    revalidatePath("/owner");
+    if (rt.property?.slug) revalidatePath(`/property/${rt.property.slug}`);
+    revalidatePath("/");
     return { success: true, roomType: updated };
   } catch (error: unknown) {
     console.error("updateOwnerRoomTypeAction error:", error);
@@ -1481,8 +1526,26 @@ export async function deleteOwnerRoomTypeAction(roomTypeId: string) {
 
     await prisma.roomType.delete({ where: { id: roomTypeId } });
 
+    const remainingActive = await prisma.roomType.findMany({
+      where: { propertyId: rt.propertyId, isActive: true },
+      select: { monthlyRent: true },
+    });
+    const newStartingPrice =
+      remainingActive.length > 0 ? Math.min(...remainingActive.map((t) => t.monthlyRent)) : null;
+
+    await prisma.property.update({
+      where: { id: rt.propertyId },
+      data: { startingPrice: newStartingPrice },
+    });
+
     revalidatePath(`/owner/properties/${rt.propertyId}/room-types`);
     revalidatePath(`/owner/properties/${rt.propertyId}/rooms`);
+    revalidatePath(`/owner/properties/${rt.propertyId}`);
+    revalidatePath("/owner/properties");
+    revalidatePath("/owner/rooms");
+    revalidatePath("/owner");
+    if (rt.property?.slug) revalidatePath(`/property/${rt.property.slug}`);
+    revalidatePath("/");
     return { success: true };
   } catch (error: unknown) {
     console.error("deleteOwnerRoomTypeAction error:", error);
@@ -1569,14 +1632,59 @@ export async function updateOwnerPropertyAction(
       return { success: false, error: "Property not found or unauthorized." };
     }
 
+    // Safely map genderPolicy to valid Prisma GenderPolicy enum
+    let safeGenderPolicy: GenderPolicy | undefined = undefined;
+    if (input.genderPolicy) {
+      const g = String(input.genderPolicy).toUpperCase().trim();
+      if (g === "BOYS" || g === "MALE" || g === "MALE_ONLY" || g === "GENTS") {
+        safeGenderPolicy = GenderPolicy.BOYS;
+      } else if (g === "GIRLS" || g === "FEMALE" || g === "FEMALE_ONLY" || g === "LADIES") {
+        safeGenderPolicy = GenderPolicy.GIRLS;
+      } else {
+        safeGenderPolicy = GenderPolicy.UNISEX;
+      }
+    }
+
+    // Safely map propertyType to valid Prisma PropertyType enum (FLAT -> APARTMENT)
+    let safePropertyType: PropertyType | undefined = undefined;
+    if (input.propertyType) {
+      const pt = String(input.propertyType).toUpperCase().trim();
+      if (pt === "FLAT" || pt === "APARTMENT") {
+        safePropertyType = PropertyType.APARTMENT;
+      } else if (pt === "COLIVING" || pt === "CO_LIVING" || pt === "CO-LIVING") {
+        safePropertyType = PropertyType.COLIVING;
+      } else if (pt === "HOSTEL") {
+        safePropertyType = PropertyType.HOSTEL;
+      } else {
+        safePropertyType = PropertyType.PG;
+      }
+    }
+
+    // Determine startingPrice: if property has active room types, the lowest rent is the source of truth
+    const activeRoomTypes = await prisma.roomType.findMany({
+      where: { propertyId, isActive: true },
+      select: { monthlyRent: true },
+    });
+
+    let effectiveStartingPrice: number | null | undefined =
+      input.startingPrice !== undefined
+        ? input.startingPrice
+          ? Number(input.startingPrice)
+          : null
+        : undefined;
+
+    if (activeRoomTypes.length > 0) {
+      effectiveStartingPrice = Math.min(...activeRoomTypes.map((t) => t.monthlyRent));
+    }
+
     const updated = await prisma.property.update({
       where: { id: propertyId },
       data: {
         name: input.name?.trim(),
         description: input.description?.trim(),
-        propertyType: input.propertyType,
-        genderPolicy: input.genderPolicy,
-        startingPrice: input.startingPrice !== undefined ? (input.startingPrice ? Number(input.startingPrice) : null) : undefined,
+        propertyType: safePropertyType,
+        genderPolicy: safeGenderPolicy,
+        startingPrice: effectiveStartingPrice,
         locality: input.locality?.trim(),
         city: input.city?.trim(),
         state: input.state?.trim(),

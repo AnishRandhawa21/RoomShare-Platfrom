@@ -213,7 +213,7 @@ export function RoommateDetailClient({
       {/* Top Breadcrumb & Status */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-zinc-200">
         <div className="flex items-center gap-2 text-xs text-zinc-500">
-          <Link href="/roommates" className="hover:text-violet-600 transition-colors">
+          <Link href="/roommates" className="hover:text-[#00412E] transition-colors">
             Roommates
           </Link>
           <span>/</span>
@@ -239,7 +239,7 @@ export function RoommateDetailClient({
             </span>
           )}
 
-          <span className="rounded-full bg-violet-50 border border-violet-200 px-3 py-1 text-xs font-bold text-violet-700 uppercase">
+          <span className="rounded-full bg-[#eff4ec] border border-[#96BF8A]/40 px-3 py-1 text-xs font-bold text-[#00412E] uppercase">
             {request.preferredGender}
           </span>
 
@@ -258,7 +258,7 @@ export function RoommateDetailClient({
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-2xl font-black text-white shadow-md shadow-violet-100">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#00412E] text-2xl font-black text-white shadow-md shadow-[#00412E]/20">
                   {creatorName[0]?.toUpperCase() || "U"}
                 </div>
                 <div>
@@ -285,7 +285,7 @@ export function RoommateDetailClient({
 
               {isCreator && (
                 <div className="hidden sm:block">
-                  <span className="rounded-xl bg-violet-50 border border-violet-200 px-3 py-1.5 text-xs font-bold text-violet-700">
+                  <span className="rounded-xl bg-[#eff4ec] border border-[#96BF8A]/40 px-3 py-1.5 text-xs font-bold text-[#00412E]">
                     Your Post
                   </span>
                 </div>
@@ -308,17 +308,17 @@ export function RoommateDetailClient({
 
               <div className="mt-3 flex flex-wrap items-center gap-4 text-xs sm:text-sm text-zinc-600">
                 <div className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-violet-600 shrink-0" />
+                  <MapPin className="h-4 w-4 text-[#00412E] shrink-0" />
                   <span>{request.locality}, {request.city}</span>
                 </div>
 
                 {(request.propertyName || request.property?.name) && (
                   <div className="flex items-center gap-1.5 font-medium text-zinc-900">
-                    <Building2 className="h-4 w-4 text-violet-600 shrink-0" />
+                    <Building2 className="h-4 w-4 text-[#00412E] shrink-0" />
                     {request.property ? (
                       <Link
                         href={`/property/${request.property.slug}`}
-                        className="text-violet-700 hover:underline flex items-center gap-1"
+                        className="text-[#00412E] hover:underline flex items-center gap-1 font-bold"
                       >
                         <span>{request.property.name}</span>
                         <ExternalLink className="h-3 w-3" />
@@ -330,16 +330,16 @@ export function RoommateDetailClient({
                 )}
 
                 <div className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-violet-600 shrink-0" />
+                  <Calendar className="h-4 w-4 text-[#00412E] shrink-0" />
                   <span>Target Move-in: <strong>{formattedMoveIn}</strong></span>
                 </div>
               </div>
             </div>
 
             {/* Quick Spec Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-violet-50/50 border border-violet-100">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-[#eff4ec]/50 border border-[#E8EAE5]">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#00412E] block">
                   Monthly Rent Share
                 </span>
                 <span className="text-lg font-black text-zinc-950">
@@ -349,7 +349,7 @@ export function RoommateDetailClient({
               </div>
 
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#00412E] block">
                   Security Deposit
                 </span>
                 <span className="text-lg font-black text-zinc-950">
@@ -358,7 +358,7 @@ export function RoommateDetailClient({
               </div>
 
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#00412E] block">
                   Room Sharing
                 </span>
                 <span className="text-sm font-bold text-zinc-900">
@@ -367,7 +367,7 @@ export function RoommateDetailClient({
               </div>
 
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#00412E] block">
                   Flatmates Needed
                 </span>
                 <span className="text-sm font-bold text-zinc-900">
@@ -411,7 +411,7 @@ export function RoommateDetailClient({
           {/* Lifestyle Compatibility Matrix */}
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-8 shadow-xs">
             <h3 className="text-base font-bold text-zinc-950 mb-5 flex items-center gap-2">
-              <Users className="h-5 w-5 text-violet-600" />
+              <Users className="h-5 w-5 text-[#00412E]" />
               <span>Lifestyle Compatibility Checklist</span>
             </h3>
 
@@ -490,7 +490,7 @@ export function RoommateDetailClient({
                   {request.preferences.customTags.map((t) => (
                     <span
                       key={t}
-                      className="rounded-full bg-violet-50 border border-violet-200 px-3 py-1 text-xs font-semibold text-violet-700"
+                      className="rounded-full bg-[#eff4ec] border border-[#96BF8A]/40 px-3 py-1 text-xs font-semibold text-[#00412E]"
                     >
                       {t}
                     </span>
@@ -578,7 +578,7 @@ export function RoommateDetailClient({
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2.5">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#00412E] text-xs font-bold text-white">
                               {interest.applicant.profile?.fullName?.[0] || "U"}
                             </div>
                             <div>
@@ -624,7 +624,7 @@ export function RoommateDetailClient({
                               <button
                                 disabled={respondingId === interest.id}
                                 onClick={() => handleRespond(interest.id, "ACCEPT")}
-                                className="rounded-xl bg-violet-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-violet-700 cursor-pointer shadow-xs"
+                                className="rounded-xl bg-[#00412E] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#002d20] cursor-pointer shadow-xs"
                               >
                                 {respondingId === interest.id ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -661,7 +661,7 @@ export function RoommateDetailClient({
             /* VISITOR / APPLICANT VIEW: Apply for flatshare */
             <div className="rounded-3xl border border-zinc-200 bg-white p-6 sm:p-7 shadow-sm space-y-5">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600 block">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#00412E] block">
                   Zero Brokerage
                 </span>
                 <h3 className="text-lg font-black text-zinc-950 mt-0.5">
@@ -673,10 +673,10 @@ export function RoommateDetailClient({
               </div>
 
               {myInterest ? (
-                <div className="rounded-2xl bg-violet-50/70 border border-violet-200 p-5 space-y-3">
+                <div className="rounded-2xl bg-[#eff4ec] border border-[#96BF8A]/40 p-5 space-y-3">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-violet-600" />
-                    <span className="text-xs font-bold text-violet-950">
+                    <CheckCircle2 className="h-4 w-4 text-[#00412E]" />
+                    <span className="text-xs font-bold text-[#00412E]">
                       Inquiry Sent: Status is {myInterest.status}
                     </span>
                   </div>
@@ -691,7 +691,7 @@ export function RoommateDetailClient({
                   {myInterest.status === "ACCEPTED" && myInterest.conversationId && (
                     <Link
                       href={`/chat/${myInterest.conversationId}`}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-600 py-3 text-xs font-bold text-white hover:bg-violet-700 shadow-md shadow-violet-100"
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00412E] py-3 text-xs font-bold text-white hover:bg-[#002d20] shadow-md shadow-[#00412E]/20"
                     >
                       <MessageSquare className="h-4 w-4" />
                       <span>Start Chat with Host</span>
@@ -704,13 +704,13 @@ export function RoommateDetailClient({
                     type="button"
                     onClick={handleDirectChat}
                     disabled={isDirectChatLoading}
-                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-600 bg-violet-50 py-2.5 text-xs font-bold text-violet-700 hover:bg-violet-100 cursor-pointer shadow-xs transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#00412E] bg-[#eff4ec] py-2.5 text-xs font-bold text-[#00412E] hover:bg-[#dce7d8] cursor-pointer shadow-xs transition-colors disabled:opacity-50"
                   >
                     {isDirectChatLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        <MessageSquare className="h-4 w-4" />
+                        <MessageSquare className="h-4 w-4 text-[#00412E]" />
                         <span>Direct Message {creatorName}</span>
                       </>
                     )}
@@ -741,14 +741,14 @@ export function RoommateDetailClient({
                         value={introMessage}
                         onChange={(e) => setIntroMessage(e.target.value)}
                         placeholder={`Hi ${creatorName}, I work in the area and my move-in date aligns well. I'm a quiet, clean flatmate...`}
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-violet-500 focus:bg-white"
+                        className="w-full rounded-xl border border-[#E8EAE5] bg-zinc-50 p-3 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-[#00412E] focus:bg-white"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={isApplying || requestStatus !== "ACTIVE"}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-600 py-3 text-xs sm:text-sm font-bold text-white shadow-md shadow-violet-100 hover:bg-violet-700 disabled:opacity-50 cursor-pointer active:scale-95 transition-all"
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00412E] py-3 text-xs sm:text-sm font-bold text-white shadow-md shadow-[#00412E]/20 hover:bg-[#002d20] disabled:opacity-50 cursor-pointer active:scale-95 transition-all"
                     >
                       {isApplying ? (
                         <>
@@ -757,7 +757,7 @@ export function RoommateDetailClient({
                         </>
                       ) : (
                         <>
-                          <Send className="h-4 w-4" />
+                          <Send className="h-4 w-4 text-[#96BF8A]" />
                           <span>Send Interest Application</span>
                         </>
                       )}
@@ -775,7 +775,7 @@ export function RoommateDetailClient({
                   </p>
                   <Link
                     href={`/login?returnUrl=/roommates/${request.id}`}
-                    className="w-full inline-block rounded-xl bg-violet-600 py-2.5 text-xs font-bold text-white hover:bg-violet-700 transition-colors shadow-xs"
+                    className="w-full inline-block rounded-xl bg-[#00412E] py-2.5 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs"
                   >
                     Sign In to Message / Connect
                   </Link>

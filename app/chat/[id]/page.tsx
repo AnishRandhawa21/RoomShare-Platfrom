@@ -72,16 +72,16 @@ export default async function ConversationPage({ params }: PageProps) {
   const cityNames = locationsData.cities.map((c) => c.name);
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-50/50 text-zinc-900">
+    <div className="h-screen flex flex-col bg-[#F9FAF8] text-zinc-900 overflow-hidden">
       <Header currentUser={sanitizedUser} cities={cityNames} />
 
-      <main className="flex-1 py-6 sm:py-8">
+      <main className="flex-1 min-h-0 px-2 sm:px-4 py-2 sm:py-3 overflow-hidden">
         <Suspense
           fallback={
-            <div className="mx-auto flex h-[calc(100vh-10rem)] max-w-4xl items-center justify-center rounded-3xl border border-zinc-200 bg-white">
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-7 w-7 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
-                <span className="text-xs font-semibold text-zinc-400">Loading chat...</span>
+            <div className="mx-auto flex h-full max-w-4xl items-center justify-center rounded-3xl border border-[#E8EAE5] bg-white shadow-sm">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-3 border-[#00412E] border-t-[#96BF8A]" />
+                <span className="text-xs font-bold text-zinc-500">Connecting to secure chat...</span>
               </div>
             </div>
           }
@@ -89,8 +89,6 @@ export default async function ConversationPage({ params }: PageProps) {
           <ConversationLoader params={params} userId={currentUser.id} />
         </Suspense>
       </main>
-
-      <Footer />
     </div>
   );
 }

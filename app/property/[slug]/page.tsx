@@ -35,8 +35,23 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
     };
   }
 
-  const priceFormatted = property.startingPrice
-    ? `From ₹${property.startingPrice.toLocaleString("en-IN")}/mo`
+  const allActiveRoomTypes = await prisma.roomType.findMany({
+    where: { property: { slug }, isActive: true },
+    select: { monthlyRent: true, occupancy: true },
+  });
+
+  let bestPerPerson = Infinity;
+  let effectiveStartingPrice = property.startingPrice || 0;
+  for (const rt of allActiveRoomTypes) {
+    const perPerson = rt.occupancy > 1 ? Math.round(rt.monthlyRent / rt.occupancy) : rt.monthlyRent;
+    if (perPerson < bestPerPerson) {
+      bestPerPerson = perPerson;
+      effectiveStartingPrice = perPerson;
+    }
+  }
+
+  const priceFormatted = effectiveStartingPrice
+    ? `From ₹${effectiveStartingPrice.toLocaleString("en-IN")}/mo`
     : "Best Rates";
   const title = `${property.name} in ${property.locality}, ${property.city} | ${priceFormatted} — StayKro`;
   const description =
@@ -104,11 +119,17 @@ async function PropertyDataLoader({ params }: PropertyPageProps) {
     }
   }
 
-  const startingPrice = property.startingPrice || (
-    property.roomTypes.length > 0
-      ? Math.min(...property.roomTypes.map((r) => r.monthlyRent))
-      : 0
-  );
+  const activeRoomTypes = property.roomTypes.filter((r) => r.isActive !== false);
+
+  let bestPerPerson = Infinity;
+  let startingPrice = property.startingPrice || 0;
+  for (const rt of activeRoomTypes) {
+    const perPerson = rt.occupancy > 1 ? Math.round(rt.monthlyRent / rt.occupancy) : rt.monthlyRent;
+    if (perPerson < bestPerPerson) {
+      bestPerPerson = perPerson;
+      startingPrice = perPerson;
+    }
+  }
 
   const serializedProperty = {
     id: property.id,

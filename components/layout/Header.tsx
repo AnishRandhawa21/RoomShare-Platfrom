@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   MapPin,
   User,
@@ -16,6 +17,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { getAuthSessionAction, getDiscoveryCitiesAction } from "@/actions/auth";
+import { getUnreadMessagesStatusAction } from "@/actions/chat";
 import { createClient } from "@/lib/supabase/client";
 
 interface HeaderProps {
@@ -110,6 +112,75 @@ export function Header({
   const selectedCity = controlledCity || internalCity;
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Zero-load sync for unread chat status (WebSocket-driven + paused on hidden tabs)
+  useEffect(() => {
+    if (!currentUser) {
+      setHasUnreadMessages(false);
+      setUnreadCount(0);
+      return;
+    }
+
+    // 1. Initial check & window focus trigger
+    const checkUnread = async () => {
+      // Zero DB load when tab is hidden / minimized
+      if (typeof document !== "undefined" && document.hidden) return;
+
+      try {
+        const res = await getUnreadMessagesStatusAction();
+        setHasUnreadMessages(res.hasUnread);
+        setUnreadCount(res.unreadCount);
+      } catch {
+        // non-critical
+      }
+    };
+
+    checkUnread();
+
+    // 2. WebSocket listener for instant zero-DB-query notification
+    let notifChannel: any = null;
+    let supabase: any = null;
+    try {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        supabase = createClient();
+        notifChannel = supabase.channel(`user_notif_${currentUser.id}`, {
+          config: { broadcast: { ack: false } },
+        });
+
+        notifChannel.on("broadcast", { event: "incoming_chat" }, () => {
+          setHasUnreadMessages(true);
+          setUnreadCount((prev) => prev + 1);
+        });
+
+        notifChannel.subscribe();
+      }
+    } catch (err) {
+      console.warn("Header realtime notification skipped:", err);
+    }
+
+    // 3. Relaxed low-frequency fallback (every 45s instead of 10s, saves ~80% DB load)
+    const interval = setInterval(checkUnread, 45000);
+
+    const onVisible = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        checkUnread();
+      }
+    };
+
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
+      if (supabase && notifChannel) {
+        supabase.removeChannel(notifChannel);
+      }
+    };
+  }, [currentUser]);
 
   const handleSelectCity = (city: string) => {
     if (onSelectCity) {
@@ -122,18 +193,25 @@ export function Header({
 
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-200/80 bg-white/95 backdrop-blur-md transition-all">
+    <header className="sticky top-0 z-40 w-full border-b border-[#E8EAE5] bg-white/95 backdrop-blur-md transition-all">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         
         {/* Left: Brand Identity & City Selector */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0 min-w-0">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-sm shadow-violet-200 transition-transform group-hover:scale-105">
-              <Building2 className="h-4.5 w-4.5" />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white shadow-xs border border-[#E8EAE5] transition-transform group-hover:scale-105">
+              <Image
+                src="/logo.png"
+                alt="StayKro Logo"
+                width={40}
+                height={40}
+                className="h-full w-full object-contain p-0.5"
+                priority
+              />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-black tracking-tight text-zinc-950 group-hover:text-violet-600 transition-colors leading-tight">
-                StayKro<span className="text-violet-600">.</span>
+              <span className="text-lg font-black tracking-tight text-zinc-950 group-hover:text-[#00412E] transition-colors leading-tight">
+                StayKro<span className="text-[#96BF8A]">.</span>
               </span>
               <span className="text-[9px] font-bold tracking-wider uppercase text-zinc-400 hidden sm:block leading-none mt-0.5">
                 PG & Roommate Platform
@@ -142,7 +220,7 @@ export function Header({
           </Link>
 
           {/* Subtle Vertical Divider */}
-          <div className="h-5 w-px bg-zinc-200 hidden md:block" />
+          <div className="h-5 w-px bg-[#E8EAE5] hidden md:block" />
 
           {/* City Selector Dropdown */}
           <div className="relative hidden md:block">
@@ -150,15 +228,15 @@ export function Header({
               type="button"
               id="city-selector-btn"
               onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
-              className="flex items-center gap-1.5 rounded-full border border-zinc-200/90 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 rounded-full border border-[#E8EAE5] bg-[#E8EAE5]/50 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-[#E8EAE5] hover:border-[#96BF8A] transition-all cursor-pointer"
             >
-              <MapPin className="h-3.5 w-3.5 text-violet-600 shrink-0" />
+              <MapPin className="h-3.5 w-3.5 text-[#00412E] shrink-0" />
               <span>{selectedCity}</span>
               <ChevronDown className="h-3 w-3 text-zinc-400" />
             </button>
 
             {isCityDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-48 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 z-50">
+              <div className="absolute left-0 mt-2 w-48 rounded-2xl border border-[#E8EAE5] bg-white p-2 shadow-xl ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 z-50">
                 <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                   Select your city
                 </div>
@@ -169,13 +247,13 @@ export function Header({
                       onClick={() => handleSelectCity(city)}
                       className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors cursor-pointer ${
                         selectedCity.toLowerCase() === city.toLowerCase()
-                          ? "bg-violet-50 text-violet-700 font-bold"
-                          : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+                          ? "bg-[#eff4ec] text-[#00412E] font-bold"
+                          : "text-zinc-600 hover:bg-[#E8EAE5]/40 hover:text-zinc-900"
                       }`}
                     >
                       <span>{city}</span>
                       {selectedCity.toLowerCase() === city.toLowerCase() && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-violet-600" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#00412E]" />
                       )}
                     </button>
                   ))}
@@ -184,9 +262,9 @@ export function Header({
             )}
           </div>
 
-          {/* Animated Trust / Zero Brokerage Badge moved to Header */}
-          <div className="hidden lg:inline-flex items-center gap-1.5 rounded-full border border-emerald-200/90 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-900 shadow-2xs">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          {/* Animated Trust / Zero Brokerage Badge */}
+          <div className="hidden lg:inline-flex items-center gap-1.5 rounded-full border border-[#96BF8A]/40 bg-[#E8EAE5]/60 px-2.5 py-1 text-[11px] font-bold text-[#00412E] shadow-2xs">
+            <span className="flex h-2 w-2 rounded-full bg-[#96BF8A] animate-pulse" />
             <span>Zero Brokerage</span>
           </div>
         </div>
@@ -195,17 +273,17 @@ export function Header({
         <nav className="hidden md:flex items-center justify-center gap-1.5 lg:gap-3 mx-4">
           <Link
             href="/#discovery-section"
-            className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100/80 rounded-full transition-all whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-700 hover:text-[#00412E] hover:bg-[#E8EAE5]/50 rounded-full transition-all whitespace-nowrap"
           >
-            <Home className="h-4 w-4 text-violet-600 shrink-0" />
+            <Home className="h-4 w-4 text-[#00412E] shrink-0" />
             <span>Find a PG</span>
           </Link>
 
           <Link
             href="/roommates"
-            className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-700 hover:text-zinc-950 hover:bg-zinc-100/80 rounded-full transition-all whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-700 hover:text-[#00412E] hover:bg-[#E8EAE5]/50 rounded-full transition-all whitespace-nowrap"
           >
-            <Users className="h-4 w-4 text-violet-600 shrink-0" />
+            <Users className="h-4 w-4 text-[#00412E] shrink-0" />
             <span>Find Roommates</span>
           </Link>
 
@@ -213,9 +291,9 @@ export function Header({
           {currentUser && (currentUser.role === "OWNER" || currentUser.role === "ADMIN") && (
             <Link
               href="/owner/properties"
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-bold text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 rounded-full transition-all whitespace-nowrap border border-emerald-200"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-bold text-[#00412E] bg-[#eff4ec] hover:bg-[#dce7d8] rounded-full transition-all whitespace-nowrap border border-[#96BF8A]/40"
             >
-              <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <Building2 className="h-4 w-4 text-[#00412E] shrink-0" />
               <span>Owner Hub</span>
             </Link>
           )}
@@ -235,20 +313,26 @@ export function Header({
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {currentUser && (
             <div className="flex items-center gap-1.5">
-              {/* Chat / Messages Link */}
+              {/* Chat / Messages Link with Unread Indicator Dot */}
               <Link
                 href="/chat"
-                title="Roommate Chats"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-600 hover:text-violet-700 hover:border-violet-300 hover:bg-violet-50 transition-all cursor-pointer shadow-2xs"
+                title={hasUnreadMessages ? `Roommate Chats (${unreadCount} new)` : "Roommate Chats"}
+                className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[#E8EAE5] bg-[#E8EAE5]/40 text-zinc-600 hover:text-[#00412E] hover:border-[#96BF8A] hover:bg-[#eff4ec] transition-all cursor-pointer shadow-2xs group"
               >
                 <MessageSquare className="h-4.5 w-4.5" />
+                {hasUnreadMessages && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#96BF8A] opacity-75" />
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-[#00412E] ring-2 ring-white" />
+                  </span>
+                )}
               </Link>
 
               {/* Saved Listings Link */}
               <Link
                 href="/saved"
                 title="Saved Listings"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-600 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition-all cursor-pointer shadow-2xs"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E8EAE5] bg-[#E8EAE5]/40 text-zinc-600 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition-all cursor-pointer shadow-2xs"
               >
                 <Bookmark className="h-4.5 w-4.5" />
               </Link>
@@ -260,12 +344,12 @@ export function Header({
             <Link
               id="profile-nav-btn"
               href="/profile"
-              className="flex items-center gap-2 rounded-full border border-violet-200/90 bg-violet-50/70 hover:bg-violet-100/80 pl-1.5 pr-3.5 py-1.5 text-xs font-bold text-violet-950 transition-all shadow-2xs hover:shadow-xs cursor-pointer ml-1"
+              className="flex items-center gap-2 rounded-full border border-[#96BF8A]/40 bg-[#eff4ec] hover:bg-[#dce7d8] pl-1.5 pr-3.5 py-1.5 text-xs font-bold text-[#00412E] transition-all shadow-2xs hover:shadow-xs cursor-pointer ml-1"
             >
-              <div className="flex h-6.5 w-6.5 items-center justify-center rounded-full bg-violet-600 text-[11px] font-black text-white shadow-2xs">
+              <div className="flex h-6.5 w-6.5 items-center justify-center rounded-full bg-[#00412E] text-[11px] font-black text-white shadow-2xs">
                 {currentUser.profile?.fullName ? currentUser.profile.fullName[0].toUpperCase() : "U"}
               </div>
-              <span className="truncate max-w-[130px] font-semibold text-xs text-zinc-900 hidden sm:inline">
+              <span className="truncate max-w-[130px] font-semibold text-xs text-[#00412E] hidden sm:inline">
                 {currentUser.profile?.fullName || "My Account"}
               </span>
             </Link>
@@ -273,9 +357,9 @@ export function Header({
             <Link
               id="login-btn"
               href="/login"
-              className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white hover:bg-zinc-50 px-4 py-2 text-xs font-bold text-zinc-800 transition-all shadow-2xs hover:shadow-xs cursor-pointer ml-1"
+              className="flex items-center gap-2 rounded-full border border-[#00412E] bg-[#00412E] hover:bg-[#002d20] px-4 py-2 text-xs font-bold text-white transition-all shadow-xs hover:shadow-sm cursor-pointer ml-1"
             >
-              <User className="h-4 w-4 text-zinc-500" />
+              <User className="h-4 w-4 text-[#96BF8A]" />
               <span>Sign In</span>
             </Link>
           )}
@@ -310,7 +394,7 @@ export function Header({
                   }}
                   className={`rounded-xl px-3 py-2 text-xs font-semibold text-left transition-colors cursor-pointer ${
                     selectedCity.toLowerCase() === city.toLowerCase()
-                      ? "bg-violet-600 text-white font-bold"
+                      ? "bg-[#00412E] text-white font-bold"
                       : "bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
                   }`}
                 >
@@ -327,7 +411,7 @@ export function Header({
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
             >
-              <Home className="h-4 w-4 text-violet-600" />
+              <Home className="h-4 w-4 text-[#00412E]" />
               <span>Find a PG</span>
             </Link>
 
@@ -336,7 +420,7 @@ export function Header({
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
             >
-              <Users className="h-4 w-4 text-violet-600" />
+              <Users className="h-4 w-4 text-[#00412E]" />
               <span>Find Roommates</span>
             </Link>
 
@@ -344,10 +428,23 @@ export function Header({
               <Link
                 href="/chat"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
               >
-                <MessageSquare className="h-4 w-4 text-violet-600" />
-                <span>My Roommate Chats</span>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <MessageSquare className="h-4 w-4 text-[#00412E]" />
+                    {hasUnreadMessages && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#96BF8A] ring-1 ring-white" />
+                    )}
+                  </div>
+                  <span>My Roommate Chats</span>
+                </div>
+                {hasUnreadMessages && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-[#00412E] px-2.5 py-0.5 text-[10px] font-bold text-white shadow-2xs">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#96BF8A] animate-pulse" />
+                    <span>{unreadCount > 1 ? `${unreadCount} New` : "New"}</span>
+                  </span>
+                )}
               </Link>
             )}
 
@@ -364,9 +461,9 @@ export function Header({
               <Link
                 href="/owner/properties"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100"
+                className="flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold text-[#00412E] bg-[#eff4ec] hover:bg-[#dce7d8]"
               >
-                <Building2 className="h-4 w-4 text-emerald-600" />
+                <Building2 className="h-4 w-4 text-[#00412E]" />
                 <span>Owner Hub & PG Management</span>
               </Link>
             )}
@@ -389,7 +486,7 @@ export function Header({
               <Link
                 href="/profile"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-600 py-2.5 text-center text-xs font-bold text-white shadow-sm shadow-violet-200"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00412E] py-2.5 text-center text-xs font-bold text-white shadow-sm shadow-[#00412E]/20 hover:bg-[#002d20]"
               >
                 <span>My Profile ({currentUser.profile?.fullName || "Account"})</span>
               </Link>
@@ -397,7 +494,7 @@ export function Header({
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-600 py-2.5 text-center text-xs font-bold text-white shadow-sm shadow-violet-200"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00412E] py-2.5 text-center text-xs font-bold text-white shadow-sm shadow-[#00412E]/20 hover:bg-[#002d20]"
               >
                 <span>Sign In / Create Account</span>
               </Link>

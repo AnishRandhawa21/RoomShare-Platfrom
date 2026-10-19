@@ -98,8 +98,8 @@ export function SavedDashboardClient({
             onClick={() => setActiveTab("pgs")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               activeTab === "pgs"
-                ? "bg-zinc-900 text-white shadow-xs"
-                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900"
+                ? "bg-[#00412E] text-white shadow-xs"
+                : "bg-[#E8EAE5]/60 text-zinc-600 hover:bg-[#E8EAE5] hover:text-zinc-900"
             }`}
           >
             <Building2 className="h-4 w-4" />
@@ -111,8 +111,8 @@ export function SavedDashboardClient({
             onClick={() => setActiveTab("roommates")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               activeTab === "roommates"
-                ? "bg-violet-600 text-white shadow-xs"
-                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900"
+                ? "bg-[#00412E] text-white shadow-xs"
+                : "bg-[#E8EAE5]/60 text-zinc-600 hover:bg-[#E8EAE5] hover:text-zinc-900"
             }`}
           >
             <Users className="h-4 w-4" />
@@ -153,11 +153,11 @@ export function SavedDashboardClient({
 
                       {/* Info */}
                       <div className="p-4 space-y-2">
-                        <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                        <span className="rounded-md bg-[#eff4ec] border border-[#96BF8A]/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#00412E]">
                           {p.genderPolicy}
                         </span>
 
-                        <h3 className="text-base font-bold text-zinc-950 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                        <h3 className="text-base font-bold text-zinc-950 group-hover:text-[#00412E] transition-colors line-clamp-1">
                           {p.name}
                         </h3>
 
@@ -184,7 +184,7 @@ export function SavedDashboardClient({
 
                       <Link
                         href={`/property/${p.slug}`}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-zinc-800 transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#00412E] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs"
                       >
                         <span>View Details</span>
                         <ArrowRight className="h-3.5 w-3.5" />
@@ -194,8 +194,8 @@ export function SavedDashboardClient({
                 ))}
               </div>
             ) : (
-              <div className="rounded-3xl border border-dashed border-zinc-200 bg-zinc-50/50 p-12 text-center max-w-md mx-auto">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700 mb-4">
+              <div className="rounded-3xl border border-dashed border-[#E8EAE5] bg-[#E8EAE5]/30 p-12 text-center max-w-md mx-auto">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eff4ec] text-[#00412E] mb-4 border border-[#96BF8A]/30">
                   <Building2 className="h-6 w-6" />
                 </div>
                 <h3 className="text-base font-bold text-zinc-950">
@@ -207,10 +207,10 @@ export function SavedDashboardClient({
                 <div className="mt-5">
                   <Link
                     href="/#discovery-section"
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-xs"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs"
                   >
                     <span>Browse PGs</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
+                    <ArrowRight className="h-3.5 w-3.5 text-[#96BF8A]" />
                   </Link>
                 </div>
               </div>
@@ -225,13 +225,13 @@ export function SavedDashboardClient({
                 {roommates.map((r) => (
                   <div
                     key={r.id}
-                    className="group flex flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs hover:border-violet-300 hover:shadow-md transition-all"
+                    className="group flex flex-col justify-between rounded-2xl border border-[#E8EAE5] bg-white p-5 shadow-xs hover:border-[#00412E] hover:ring-2 hover:ring-[#96BF8A]/30 hover:shadow-md transition-all"
                   >
                     <div>
                       {/* Header */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#eff4ec] text-xs font-bold text-[#00412E] border border-[#96BF8A]/30">
                             {r.creator.profile?.fullName?.[0] || "U"}
                           </div>
                           <div>
@@ -255,7 +255,7 @@ export function SavedDashboardClient({
                       </div>
 
                       {/* Title */}
-                      <h3 className="mt-3 text-sm font-bold text-zinc-950 group-hover:text-violet-700 transition-colors line-clamp-2">
+                      <h3 className="mt-3 text-sm font-bold text-zinc-950 group-hover:text-[#00412E] transition-colors line-clamp-2">
                         {r.title}
                       </h3>
 
@@ -279,18 +279,18 @@ export function SavedDashboardClient({
 
                       <Link
                         href={`/roommates/${r.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-violet-700 transition-colors shadow-xs"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#00412E] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs"
                       >
                         <span>Connect</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
+                        <ArrowRight className="h-3.5 w-3.5 text-[#96BF8A]" />
                       </Link>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="rounded-3xl border border-dashed border-zinc-200 bg-zinc-50/50 p-12 text-center max-w-md mx-auto">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-700 mb-4">
+              <div className="rounded-3xl border border-dashed border-[#E8EAE5] bg-[#E8EAE5]/30 p-12 text-center max-w-md mx-auto">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eff4ec] text-[#00412E] mb-4 border border-[#96BF8A]/30">
                   <Users className="h-6 w-6" />
                 </div>
                 <h3 className="text-base font-bold text-zinc-950">
@@ -302,10 +302,10 @@ export function SavedDashboardClient({
                 <div className="mt-5">
                   <Link
                     href="/roommates"
-                    className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 transition-colors shadow-xs"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs"
                   >
                     <span>Find Roommates</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
+                    <ArrowRight className="h-3.5 w-3.5 text-[#96BF8A]" />
                   </Link>
                 </div>
               </div>

@@ -62,8 +62,8 @@ export function PropertyGallery({ images, propertyName }: PropertyGalleryProps) 
         {/* Top Badges */}
         <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
           {currentImage.isCover && (
-            <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white shadow-sm flex items-center gap-1">
-              <Sparkles className="h-3 w-3" /> Primary Cover
+            <span className="rounded-full bg-[#00412E] border border-[#96BF8A]/40 px-3 py-1 text-xs font-bold text-white shadow-sm flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-[#96BF8A]" /> Primary Cover
             </span>
           )}
           <span className="rounded-full bg-black/60 backdrop-blur-md px-3 py-1 text-xs font-semibold text-white">
@@ -109,7 +109,7 @@ export function PropertyGallery({ images, propertyName }: PropertyGalleryProps) 
               onClick={() => setSelectedIndex(idx)}
               className={`relative h-18 sm:h-20 w-28 sm:w-32 shrink-0 rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
                 selectedIndex === idx
-                  ? "border-indigo-600 ring-2 ring-indigo-600/30 scale-98"
+                  ? "border-[#00412E] ring-2 ring-[#96BF8A]/40 scale-98"
                   : "border-transparent opacity-70 hover:opacity-100"
               }`}
             >

@@ -83,7 +83,7 @@ export function RoomTypesSection({
                       {rt.name}
                     </h3>
                     <div className="flex items-center gap-1.5 text-xs text-zinc-500 mt-0.5">
-                      <Users className="h-3.5 w-3.5 text-indigo-600" />
+                      <Users className="h-3.5 w-3.5 text-[#00412E]" />
                       <span>
                         {rt.occupancy === 1
                           ? "Private Single Room"
@@ -119,7 +119,7 @@ export function RoomTypesSection({
                   <span
                     className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-semibold ${
                       rt.hasAttachedBathroom
-                        ? "bg-indigo-50 text-indigo-700"
+                        ? "bg-[#eff4ec] text-[#00412E]"
                         : "bg-zinc-100 text-zinc-600"
                     }`}
                   >
@@ -225,17 +225,17 @@ export function RoomTypesSection({
                   {propertyId && rt.occupancy > 1 && (
                     <Link
                       href={`/roommates/new?propertyId=${encodeURIComponent(propertyId)}&roomTypeId=${encodeURIComponent(rt.id)}`}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-violet-600 bg-violet-50 px-3.5 py-2.5 text-xs font-bold text-violet-700 hover:bg-violet-100 active:scale-95 transition-all shadow-xs"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-[#96BF8A]/40 bg-[#eff4ec] px-3.5 py-2.5 text-xs font-bold text-[#00412E] hover:bg-[#dce7d8] active:scale-95 transition-all shadow-xs"
                       title={`Find a roommate for ${rt.name}`}
                     >
-                      <UserPlus className="h-3.5 w-3.5 text-violet-600" />
+                      <UserPlus className="h-3.5 w-3.5 text-[#00412E]" />
                       <span>Find a Roommate</span>
                     </Link>
                   )}
                   <button
                     type="button"
                     onClick={() => onSelectRoomType(rt.id)}
-                    className="rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 active:scale-95 transition-all shadow-xs cursor-pointer"
+                    className="rounded-xl bg-[#00412E] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#002d20] active:scale-95 transition-all shadow-xs cursor-pointer"
                   >
                     Book / Enquire
                   </button>

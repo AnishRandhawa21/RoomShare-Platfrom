@@ -20,6 +20,7 @@ export interface ConversationSummaryItem {
   } | null;
   lastMessageText: string | null;
   lastMessageAt: Date | null;
+  hasUnread?: boolean;
   otherParty: {
     id: string;
     name: string;
@@ -84,6 +85,14 @@ export async function getUserConversationsAction(): Promise<ChatActionResult<Con
                 city: true,
               },
             },
+            messages: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: {
+                senderId: true,
+                createdAt: true,
+              },
+            },
             participants: {
               include: {
                 user: {
@@ -109,11 +118,19 @@ export async function getUserConversationsAction(): Promise<ChatActionResult<Con
     const conversations: ConversationSummaryItem[] = participants.map((p) => {
       const conv = p.conversation;
       const otherParticipant = conv.participants.find((pt) => pt.userId !== user.id)?.user;
+      const lastMsg = conv.messages?.[0];
+      const hasUnread = Boolean(
+        lastMsg &&
+        lastMsg.senderId !== user.id &&
+        (!p.lastReadAt || new Date(lastMsg.createdAt) > new Date(p.lastReadAt))
+      );
+
       return {
         id: conv.id,
         roommateRequest: conv.roommateRequest,
         lastMessageText: conv.lastMessageText,
         lastMessageAt: conv.lastMessageAt,
+        hasUnread,
         otherParty: {
           id: otherParticipant?.id || "unknown",
           name: otherParticipant?.profile?.fullName || "Flatmate Match",
@@ -186,6 +203,14 @@ export async function getConversationDetailsAction(
       return { success: false, error: "Unauthorized to view this conversation." };
     }
 
+    // Mark as read asynchronously
+    prisma.conversationParticipant
+      .updateMany({
+        where: { conversationId, userId: user.id },
+        data: { lastReadAt: new Date() },
+      })
+      .catch((err) => console.error("Error updating lastReadAt:", err));
+
     const otherParticipant = conversation.participants.find((pt) => pt.userId !== user.id)?.user;
 
     return {
@@ -205,6 +230,95 @@ export async function getConversationDetailsAction(
   } catch (error) {
     console.error("Error loading conversation:", error);
     return { success: false, error: "Failed to load chat." };
+  }
+}
+
+/**
+ * Fetches latest messages created after a given timestamp (for smart background polling sync).
+ */
+export async function getLatestMessagesAction({
+  conversationId,
+  after,
+}: {
+  conversationId: string;
+  after?: string;
+}): Promise<ChatActionResult<MessageData[]>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "Unauthorized." };
+  }
+
+  try {
+    const isParticipant = await prisma.conversationParticipant.findUnique({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId: user.id,
+        },
+      },
+    });
+
+    if (!isParticipant && user.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized." };
+    }
+
+    const whereClause: {
+      conversationId: string;
+      createdAt?: { gt: Date };
+    } = { conversationId };
+
+    if (after) {
+      whereClause.createdAt = {
+        gt: new Date(after),
+      };
+    }
+
+    const messages = await prisma.message.findMany({
+      where: whereClause,
+      orderBy: { createdAt: "asc" },
+      take: 50,
+    });
+
+    // Mark conversation read in background
+    if (messages.length > 0) {
+      prisma.conversationParticipant
+        .updateMany({
+          where: { conversationId, userId: user.id },
+          data: { lastReadAt: new Date() },
+        })
+        .catch(() => {});
+    }
+
+    return {
+      success: true,
+      data: messages,
+    };
+  } catch (error) {
+    console.error("Error fetching latest messages:", error);
+    return { success: false, error: "Failed to fetch new messages." };
+  }
+}
+
+/**
+ * Explicitly marks a conversation as read by the current user.
+ */
+export async function markConversationAsReadAction(
+  conversationId: string
+): Promise<ChatActionResult<boolean>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "Unauthorized." };
+  }
+
+  try {
+    await prisma.conversationParticipant.updateMany({
+      where: { conversationId, userId: user.id },
+      data: { lastReadAt: new Date() },
+    });
+    return { success: true, data: true };
+  } catch (error) {
+    console.error("Error marking conversation as read:", error);
+    return { success: false, error: "Failed to mark as read." };
   }
 }
 
@@ -259,6 +373,10 @@ export async function sendMessageAction({
           lastMessageText: trimmed,
           lastMessageAt: new Date(),
         },
+      }),
+      prisma.conversationParticipant.updateMany({
+        where: { conversationId, userId: user.id },
+        data: { lastReadAt: new Date() },
       }),
     ]);
 
@@ -368,3 +486,60 @@ export async function startOrGetRoommateConversationAction(
     return { success: false, error: "Failed to start chat." };
   }
 }
+
+/**
+ * Quick, lightweight check to determine if the current user has any unread messages.
+ * Used for displaying a notification pill / badge dot on the homepage and header chat icon.
+ */
+export async function getUnreadMessagesStatusAction(): Promise<{
+  hasUnread: boolean;
+  unreadCount: number;
+}> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { hasUnread: false, unreadCount: 0 };
+  }
+
+  try {
+    const participants = await prisma.conversationParticipant.findMany({
+      where: { userId: user.id },
+      select: {
+        lastReadAt: true,
+        conversation: {
+          select: {
+            lastMessageAt: true,
+            messages: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: {
+                senderId: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let unreadCount = 0;
+    for (const p of participants) {
+      const lastMsg = p.conversation.messages?.[0];
+      if (
+        lastMsg &&
+        lastMsg.senderId !== user.id &&
+        (!p.lastReadAt || new Date(lastMsg.createdAt) > new Date(p.lastReadAt))
+      ) {
+        unreadCount++;
+      }
+    }
+
+    return {
+      hasUnread: unreadCount > 0,
+      unreadCount,
+    };
+  } catch (error) {
+    console.error("Error checking unread status:", error);
+    return { hasUnread: false, unreadCount: 0 };
+  }
+}
+

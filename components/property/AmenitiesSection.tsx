@@ -57,15 +57,15 @@ export function AmenitiesSection({ amenities, foodIncluded, foodOffering }: Amen
       </div>
 
       {/* Food Offering Highlight */}
-      <div className="rounded-2xl bg-indigo-50/70 p-4 border border-indigo-100 flex items-center gap-3.5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
-          <Utensils className="h-5 w-5" />
+      <div className="rounded-2xl bg-[#eff4ec] p-4 border border-[#96BF8A]/40 flex items-center gap-3.5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#00412E] text-white shadow-xs">
+          <Utensils className="h-5 w-5 text-[#96BF8A]" />
         </div>
         <div>
-          <div className="text-xs font-bold text-indigo-950">
+          <div className="text-xs font-bold text-[#00412E]">
             {foodIncluded ? "Food Included in Stay" : "Self-Cooking / Meal Optional"}
           </div>
-          <div className="text-xs text-indigo-700">
+          <div className="text-xs text-[#00412E]/85">
             {foodOffering === "VEG_ONLY"
               ? "Pure vegetarian daily breakfast, lunch, and dinner."
               : foodOffering === "VEG_NONVEG"
@@ -81,9 +81,9 @@ export function AmenitiesSection({ amenities, foodIncluded, foodOffering }: Amen
           {amenities.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-2.5 rounded-2xl border border-zinc-200/80 bg-zinc-50/60 p-3 hover:bg-zinc-50 transition-colors"
+              className="flex items-center gap-2.5 rounded-2xl border border-[#E8EAE5] bg-white p-3 hover:bg-[#eff4ec]/50 hover:border-[#96BF8A]/40 transition-colors"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-2xs">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#eff4ec] text-[#00412E] shadow-2xs">
                 {getAmenityIcon(item.name)}
               </div>
               <div className="min-w-0">

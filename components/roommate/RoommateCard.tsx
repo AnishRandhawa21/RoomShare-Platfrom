@@ -116,7 +116,7 @@ export function RoommateCard({
   else if (preferences?.sleepSchedule === "NIGHT_OWL") lifestyleBadges.push("Night owl");
 
   return (
-    <div className="group flex flex-col justify-between rounded-3xl border border-zinc-200 bg-white p-5 sm:p-6 shadow-xs transition-all hover:border-violet-300 hover:shadow-md">
+    <div className="group flex flex-col justify-between rounded-3xl border border-[#E8EAE5] bg-white p-5 sm:p-6 shadow-xs transition-all hover:border-[#00412E] hover:ring-2 hover:ring-[#96BF8A]/30 hover:shadow-md">
       <div>
         {/* Top Header: Property Context (The primary object being discovered) */}
         <div className="flex items-start justify-between gap-3">
@@ -129,7 +129,7 @@ export function RoommateCard({
             </div>
             {propertySlug ? (
               <Link href={`/property/${propertySlug}`}>
-                <h3 className="text-lg font-black text-zinc-950 group-hover:text-violet-700 transition-colors line-clamp-1">
+                <h3 className="text-lg font-black text-zinc-950 group-hover:text-[#00412E] transition-colors line-clamp-1">
                   {propertyName || "Verified PG Accommodation"}
                 </h3>
               </Link>
@@ -147,7 +147,7 @@ export function RoommateCard({
                   ? "bg-blue-50 text-blue-700 border border-blue-200"
                   : preferredGender === "GIRLS"
                   ? "bg-rose-50 text-rose-700 border border-rose-200"
-                  : "bg-violet-50 text-violet-700 border border-violet-200"
+                  : "bg-[#eff4ec] text-[#00412E] border border-[#96BF8A]/40"
               }`}
             >
               {preferredGender === "BOYS"
@@ -163,12 +163,12 @@ export function RoommateCard({
 
         {/* Room Type & Need Pill */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-xl bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-800">
+          <span className="inline-flex items-center rounded-xl bg-[#E8EAE5]/60 px-2.5 py-1 text-xs font-bold text-zinc-800">
             {roomTypeName || "Room Share"}
           </span>
 
-          <span className="inline-flex items-center gap-1 rounded-xl bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700 border border-violet-200/60">
-            <Users className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1 rounded-xl bg-[#eff4ec] px-2.5 py-1 text-xs font-bold text-[#00412E] border border-[#96BF8A]/40">
+            <Users className="h-3.5 w-3.5 text-[#96BF8A]" />
             <span>
               {requiredRoommateCount} roommate{requiredRoommateCount > 1 ? "s" : ""} needed
             </span>
@@ -191,7 +191,7 @@ export function RoommateCard({
         {/* Secondary Section: Flatmate / Person Details */}
         <div className="mt-5 rounded-2xl bg-zinc-50/80 p-3.5 border border-zinc-100 space-y-2.5">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-black text-white shadow-xs">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#00412E] text-xs font-black text-white shadow-xs">
               {creatorName[0]?.toUpperCase() || "U"}
             </div>
             <div className="min-w-0">
@@ -235,7 +235,7 @@ export function RoommateCard({
         {currentUserId === creator.id ? (
           <Link
             href={`/roommates/${id}`}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 py-2.5 text-xs font-bold hover:bg-violet-100 transition-colors"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#eff4ec] text-[#00412E] border border-[#96BF8A]/40 py-2.5 text-xs font-bold hover:bg-[#dce7d8] transition-colors"
           >
             <span>My Post</span>
           </Link>
@@ -244,13 +244,13 @@ export function RoommateCard({
             type="button"
             onClick={handleMessageClick}
             disabled={isConnecting}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-violet-600 py-2.5 text-xs font-bold text-white hover:bg-violet-700 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#00412E] py-2.5 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs cursor-pointer disabled:opacity-50"
           >
             {isConnecting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <>
-                <MessageSquare className="h-3.5 w-3.5" />
+                <MessageSquare className="h-3.5 w-3.5 text-[#96BF8A]" />
                 <span>Message</span>
               </>
             )}

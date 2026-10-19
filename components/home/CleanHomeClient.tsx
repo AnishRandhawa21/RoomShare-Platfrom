@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { getAuthSessionAction } from "@/actions/auth";
 import { Header } from "@/components/layout/Header";
@@ -25,6 +26,8 @@ import {
   Loader2,
   ArrowUpDown,
   RefreshCw,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import type {
   PropertyListingSummary,
@@ -99,8 +102,8 @@ function PropertyCard({
       onMouseLeave={handleMouseLeave}
       className={`group rounded-2xl border bg-white overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col ${
         isHovered || isCardHovered
-          ? "border-indigo-600 ring-2 ring-indigo-600/20 shadow-md"
-          : "border-zinc-200 hover:border-zinc-300"
+          ? "border-[#00412E] ring-2 ring-[#96BF8A]/30 shadow-md"
+          : "border-[#E8EAE5] hover:border-[#96BF8A]"
       }`}
     >
       {/* Image container */}
@@ -147,7 +150,7 @@ function PropertyCard({
                 ? "bg-blue-600"
                 : pg.genderPolicy === "GIRLS"
                 ? "bg-rose-600"
-                : "bg-emerald-600"
+                : "bg-[#00412E]"
             }`}
           >
             {pg.genderPolicy === "BOYS"
@@ -162,8 +165,8 @@ function PropertyCard({
             </span>
           )}
           {pg.hasActiveRoommateRequest && (
-            <span className="rounded-full bg-violet-600 backdrop-blur-xs px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 shadow-xs">
-              <Users className="h-2.5 w-2.5" /> Roommate wanted
+            <span className="rounded-full bg-[#00412E] backdrop-blur-xs px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 shadow-xs border border-[#96BF8A]/40">
+              <Users className="h-2.5 w-2.5 text-[#96BF8A]" /> Roommate wanted
             </span>
           )}
         </div>
@@ -186,14 +189,14 @@ function PropertyCard({
               <span className="truncate">{pg.locality}, {pg.city}</span>
             </div>
             {pg.distanceKm !== undefined && pg.distanceKm < Infinity && (
-              <span className="shrink-0 flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-full">
-                <Navigation className="h-2.5 w-2.5 text-indigo-600" />
+              <span className="shrink-0 flex items-center gap-1 text-[11px] font-bold text-[#00412E] bg-[#eff4ec] border border-[#96BF8A]/40 px-2 py-0.5 rounded-full">
+                <Navigation className="h-2.5 w-2.5 text-[#00412E]" />
                 {formatDistance(pg.distanceKm)}
               </span>
             )}
           </div>
           <Link href={`/property/${pg.slug}`}>
-            <h3 className="text-base font-bold text-zinc-950 group-hover:text-indigo-600 transition-colors">
+            <h3 className="text-base font-bold text-zinc-950 group-hover:text-[#00412E] transition-colors">
               {pg.name}
             </h3>
           </Link>
@@ -204,7 +207,7 @@ function PropertyCard({
               {pg.roomTypeSummaries.slice(0, 2).map((rt) => (
                 <span
                   key={rt}
-                  className="rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
+                  className="rounded-md bg-[#E8EAE5]/60 px-2 py-0.5 text-[11px] font-medium text-zinc-700"
                 >
                   {rt}
                 </span>
@@ -213,7 +216,7 @@ function PropertyCard({
           )}
         </div>
 
-        <div className="mt-5 pt-3 border-t border-zinc-100 flex items-center justify-between">
+        <div className="mt-5 pt-3 border-t border-[#E8EAE5] flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5 mb-0.5">
               {pg.originalPrice && pg.originalPrice > pg.startingPrice && (
@@ -222,7 +225,7 @@ function PropertyCard({
                 </span>
               )}
               {pg.bestSharingOccupancy && pg.bestSharingOccupancy > 1 ? (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/80">
+                <span className="text-[10px] font-bold text-[#00412E] bg-[#96BF8A]/20 px-1.5 py-0.5 rounded-md border border-[#96BF8A]/50">
                   {pg.bestSharingOccupancy}-Sharing
                 </span>
               ) : (
@@ -240,12 +243,107 @@ function PropertyCard({
           </div>
           <Link
             href={`/property/${pg.slug}`}
-            className="rounded-xl bg-zinc-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-zinc-800 transition-colors inline-block"
+            className="rounded-xl bg-[#00412E] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#002d20] transition-colors inline-block shadow-xs"
           >
             Details
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface HomeSelectOption {
+  value: string;
+  label: string;
+}
+
+function HomeSelect({
+  value,
+  options,
+  onChange,
+  icon,
+  className = "",
+  size = "md",
+}: {
+  value: string;
+  options: HomeSelectOption[];
+  onChange: (val: string) => void;
+  icon?: React.ReactNode;
+  className?: string;
+  size?: "md" | "sm";
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selected = options.find((o) => o.value.toLowerCase() === value.toLowerCase()) || options[0];
+  const isSmall = size === "sm";
+
+  return (
+    <div className={`relative ${className}`} ref={ref}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl transition-all cursor-pointer ${
+          isSmall
+            ? "border border-[#E8EAE5] bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:border-[#96BF8A] shadow-2xs"
+            : "border border-[#E8EAE5] bg-[#E8EAE5]/40 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-zinc-800 hover:bg-white hover:border-[#96BF8A]/60"
+        } ${
+          isOpen
+            ? "border-[#00412E] bg-white ring-2 ring-[#96BF8A]/25 text-zinc-950 shadow-xs"
+            : ""
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate min-w-0">
+          {icon && <span className="shrink-0">{icon}</span>}
+          <span className="truncate">{selected?.label}</span>
+        </div>
+        <ChevronDown
+          className={`h-3.5 w-3.5 text-zinc-400 shrink-0 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-[#00412E]" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className={`absolute ${isSmall ? "right-0" : "left-0"} mt-1.5 min-w-[200px] w-full rounded-2xl border border-[#E8EAE5] bg-white p-1.5 shadow-xl ring-1 ring-black/5 animate-in fade-in slide-in-from-top-1 duration-150 z-50`}>
+          <div className="space-y-0.5">
+            {options.map((opt) => {
+              const isSelected = opt.value.toLowerCase() === value.toLowerCase();
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                    isSelected
+                      ? "bg-[#eff4ec] text-[#00412E] font-bold"
+                      : "text-zinc-700 hover:bg-[#E8EAE5]/40 hover:text-zinc-950"
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && (
+                    <Check className="h-3.5 w-3.5 text-[#00412E] shrink-0 ml-2" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -298,6 +396,20 @@ export function CleanHomeClient({
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"recommended" | "nearest" | "price-asc" | "price-desc">("recommended");
+
+  const heroGenderOptions = useMemo(() => [
+    { value: "all", label: "All Genders" },
+    { value: "boys", label: "Boys Only" },
+    { value: "girls", label: "Girls Only" },
+    { value: "unisex", label: "Coliving / Unisex" },
+  ], []);
+
+  const sortOptions = useMemo(() => [
+    { value: "recommended", label: "Recommended" },
+    ...(userLocation ? [{ value: "nearest", label: "Nearest First" }] : []),
+    { value: "price-asc", label: "Price: Low to High" },
+    { value: "price-desc", label: "Price: High to Low" },
+  ], [userLocation]);
 
   const handleLocateMe = () => {
     if (!navigator.geolocation) {
@@ -468,7 +580,7 @@ export function CleanHomeClient({
   ]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-zinc-900 selection:bg-indigo-50 selection:text-indigo-900">
+    <div className="min-h-screen flex flex-col bg-white text-zinc-900 selection:bg-[#96BF8A]/30 selection:text-[#00412E]">
       {/* 1. Clean Header */}
       <Header
         selectedCity={selectedCity}
@@ -485,12 +597,29 @@ export function CleanHomeClient({
 
       <main className="flex-1">
         {/* 2. Clean Minimal Hero (Spacious & Compact) */}
-        <section className="relative border-b border-zinc-100 bg-gradient-to-b from-zinc-50/60 via-white to-white py-8 sm:py-12">
+        <section className="relative border-b border-[#E8EAE5] bg-gradient-to-b from-[#E8EAE5]/40 via-white to-white py-8 sm:py-12">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+            {/* StayKro Brand Badge with Logo */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#96BF8A]/50 bg-white/95 px-3.5 py-1.5 shadow-xs mb-4">
+              <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-md">
+                <Image
+                  src="/logo.png"
+                  alt="StayKro Logo"
+                  width={24}
+                  height={24}
+                  className="h-full w-full object-contain"
+                  priority
+                />
+              </div>
+              <span className="text-xs font-bold text-[#00412E] tracking-tight">
+                StayKro <span className="text-[#96BF8A] font-semibold">•</span> 100% Direct From Owner
+              </span>
+            </div>
+
             {/* Title & Subhead */}
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-zinc-950 sm:leading-tight">
               Verified PGs & Coliving in{" "}
-              <span className="text-indigo-600">{selectedCity}</span>
+              <span className="text-[#00412E]">{selectedCity}</span>
             </h1>
             <p className="mt-2.5 text-xs sm:text-sm text-zinc-500 max-w-xl mx-auto leading-relaxed">
               Explore authentic direct-from-owner accommodations with real photos, verified room inventory, and transparent pricing.
@@ -498,11 +627,11 @@ export function CleanHomeClient({
 
             {/* Clean Minimal Search Bar */}
             <div className="mt-6 max-w-3xl mx-auto">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-2.5 sm:p-3 shadow-lg shadow-zinc-200/40">
+              <div className="rounded-2xl border border-[#E8EAE5] bg-white p-2.5 sm:p-3 shadow-lg shadow-[#00412E]/5">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
                   {/* Locality Input */}
-                  <div className="sm:col-span-7 flex items-center rounded-xl bg-zinc-50 px-3.5 py-2.5 border border-zinc-200 focus-within:border-indigo-500 focus-within:bg-white transition-all">
-                    <MapPin className="h-4 w-4 text-indigo-600 shrink-0 mr-2.5" />
+                  <div className="sm:col-span-7 flex items-center rounded-xl bg-[#E8EAE5]/40 px-3.5 py-2.5 border border-[#E8EAE5] focus-within:border-[#00412E] focus-within:bg-white transition-all">
+                    <MapPin className="h-4 w-4 text-[#00412E] shrink-0 mr-2.5" />
                     <input
                       id="locality-search-input"
                       type="text"
@@ -522,19 +651,13 @@ export function CleanHomeClient({
                   </div>
 
                   {/* Gender Filter */}
-                  <div className="sm:col-span-3 flex items-center rounded-xl bg-zinc-50 px-3 py-2.5 border border-zinc-200 focus-within:border-indigo-500 focus-within:bg-white transition-all">
-                    <select
-                      id="hero-gender-filter"
-                      aria-label="Filter by gender"
+                  <div className="sm:col-span-3">
+                    <HomeSelect
                       value={selectedGender}
-                      onChange={(e) => setSelectedGender(e.target.value)}
-                      className="w-full bg-transparent text-xs sm:text-sm font-semibold text-zinc-800 focus:outline-none cursor-pointer"
-                    >
-                      <option value="all">All Genders</option>
-                      <option value="boys">Boys Only</option>
-                      <option value="girls">Girls Only</option>
-                      <option value="unisex">Coliving / Unisex</option>
-                    </select>
+                      options={heroGenderOptions}
+                      onChange={(val) => setSelectedGender(val)}
+                      icon={<Users className="h-4 w-4 text-[#00412E]" />}
+                    />
                   </div>
 
                   {/* Search CTA */}
@@ -544,23 +667,23 @@ export function CleanHomeClient({
                       onClick={() => {
                         document.getElementById("discovery-section")?.scrollIntoView({ behavior: "smooth" });
                       }}
-                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 py-2.5 px-4 text-xs sm:text-sm font-bold text-white hover:bg-indigo-700 active:scale-95 transition-all shadow-sm cursor-pointer"
+                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#00412E] py-2.5 px-4 text-xs sm:text-sm font-bold text-white hover:bg-[#002d20] active:scale-95 transition-all shadow-sm shadow-[#00412E]/20 cursor-pointer"
                     >
-                      <Search className="h-4 w-4" />
+                      <Search className="h-4 w-4 text-[#96BF8A]" />
                       <span>Search</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Quick Locality Pills & Near Me */}
-                <div className="mt-2.5 pt-2.5 border-t border-zinc-100 flex flex-wrap items-center gap-1.5 text-xs px-1">
+                <div className="mt-2.5 pt-2.5 border-t border-[#E8EAE5] flex flex-wrap items-center gap-1.5 text-xs px-1">
                   <button
                     type="button"
                     onClick={userLocation ? handleClearLocation : handleLocateMe}
                     className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
                       userLocation
-                        ? "bg-indigo-600 text-white shadow-xs"
-                        : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/80"
+                        ? "bg-[#00412E] text-white shadow-xs"
+                        : "bg-[#E8EAE5] text-[#00412E] hover:bg-[#eff4ec] border border-[#96BF8A]/30"
                     }`}
                     title={userLocation ? "Click to clear current location" : "Show accommodations near your current GPS location"}
                   >
@@ -582,8 +705,8 @@ export function CleanHomeClient({
                       onClick={() => setSearchQuery(loc)}
                       className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
                         searchQuery.toLowerCase() === loc.toLowerCase()
-                          ? "bg-indigo-600 text-white font-bold"
-                          : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                          ? "bg-[#00412E] text-white font-bold"
+                          : "bg-[#E8EAE5]/70 text-zinc-700 hover:bg-[#E8EAE5]"
                       }`}
                     >
                       {loc}
@@ -681,8 +804,8 @@ export function CleanHomeClient({
                   onClick={() => setAvailabilityFilter("all")}
                   className={`rounded-xl px-3.5 py-1.5 font-bold transition-all cursor-pointer whitespace-nowrap ${
                     availabilityFilter === "all"
-                      ? "bg-zinc-950 text-white shadow-xs"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                      ? "bg-[#00412E] text-white shadow-xs"
+                      : "bg-[#E8EAE5]/60 text-zinc-700 hover:bg-[#E8EAE5]"
                   }`}
                 >
                   All Stays
@@ -693,8 +816,8 @@ export function CleanHomeClient({
                   onClick={() => setAvailabilityFilter("available")}
                   className={`rounded-xl px-3.5 py-1.5 font-bold transition-all cursor-pointer whitespace-nowrap ${
                     availabilityFilter === "available"
-                      ? "bg-zinc-950 text-white shadow-xs"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                      ? "bg-[#00412E] text-white shadow-xs"
+                      : "bg-[#E8EAE5]/60 text-zinc-700 hover:bg-[#E8EAE5]"
                   }`}
                 >
                   Rooms Available
@@ -705,11 +828,11 @@ export function CleanHomeClient({
                   onClick={() => setAvailabilityFilter("roommate")}
                   className={`rounded-xl px-3.5 py-1.5 font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                     availabilityFilter === "roommate"
-                      ? "bg-violet-600 text-white shadow-xs"
-                      : "bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200/60"
+                      ? "bg-[#00412E] text-white shadow-xs"
+                      : "bg-[#eff4ec] text-[#00412E] hover:bg-[#dce7d8] border border-[#96BF8A]/40"
                   }`}
                 >
-                  <Users className="h-3.5 w-3.5" />
+                  <Users className="h-3.5 w-3.5 text-[#96BF8A]" />
                   <span>Roommate Wanted</span>
                 </button>
               </div>
@@ -717,10 +840,10 @@ export function CleanHomeClient({
               {/* Right: GPS Active Status & Sort Selector */}
               <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0 text-xs">
                 {userLocation ? (
-                  <div className="inline-flex items-center gap-2 rounded-xl bg-indigo-50 border border-indigo-200/80 px-3 py-1.5 font-medium text-indigo-900 shadow-2xs">
+                  <div className="inline-flex items-center gap-2 rounded-xl bg-[#eff4ec] border border-[#96BF8A]/40 px-3 py-1.5 font-medium text-[#00412E] shadow-2xs">
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#96BF8A] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00412E]"></span>
                     </span>
                     <span className="font-bold">GPS Near Me</span>
                     <button
@@ -728,7 +851,7 @@ export function CleanHomeClient({
                       onClick={handleLocateMe}
                       disabled={isLocating}
                       title="Refresh GPS"
-                      className="text-indigo-600 hover:text-indigo-950 cursor-pointer transition-colors p-0.5"
+                      className="text-[#00412E] hover:text-[#002d20] cursor-pointer transition-colors p-0.5"
                     >
                       {isLocating ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -750,31 +873,25 @@ export function CleanHomeClient({
                     type="button"
                     onClick={handleLocateMe}
                     disabled={isLocating}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 font-semibold text-zinc-700 hover:bg-zinc-50 hover:text-indigo-600 transition-colors cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[#E8EAE5] bg-white px-3 py-1.5 font-semibold text-zinc-700 hover:bg-[#eff4ec] hover:text-[#00412E] transition-colors cursor-pointer shadow-2xs"
                   >
                     {isLocating ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[#00412E]" />
                     ) : (
-                      <Navigation className="h-3.5 w-3.5 text-indigo-600" />
+                      <Navigation className="h-3.5 w-3.5 text-[#00412E]" />
                     )}
                     <span>Near Me</span>
                   </button>
                 )}
 
                 {/* Sleek Sort Dropdown */}
-                <div className="flex items-center rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 focus-within:border-indigo-500 shadow-2xs">
-                  <ArrowUpDown className="h-3 w-3 text-zinc-400 mr-1.5 shrink-0" />
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="bg-transparent text-xs font-semibold text-zinc-800 focus:outline-none cursor-pointer pr-1"
-                  >
-                    <option value="recommended">Recommended</option>
-                    {userLocation && <option value="nearest">Nearest First</option>}
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                  </select>
-                </div>
+                <HomeSelect
+                  value={sortBy}
+                  options={sortOptions}
+                  onChange={(val) => setSortBy(val as any)}
+                  icon={<ArrowUpDown className="h-3 w-3 text-zinc-400 shrink-0" />}
+                  size="sm"
+                />
               </div>
             </div>
 
@@ -896,10 +1013,10 @@ export function CleanHomeClient({
             )}
 
             {/* Dedicated Roommate Discovery Callout Banner (Direct access to full /roommates page) */}
-            <div className="mt-14 rounded-3xl border border-violet-100 bg-gradient-to-r from-violet-50/80 via-indigo-50/40 to-white p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xs">
+            <div className="mt-14 rounded-3xl border border-[#E8EAE5] bg-gradient-to-r from-[#eff4ec] via-[#E8EAE5]/40 to-white p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xs">
               <div className="space-y-1.5 max-w-xl">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-100/90 px-3 py-0.5 text-[11px] font-bold text-violet-700">
-                  <Users className="h-3.5 w-3.5" /> Roommate & Flatshare Matching
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#96BF8A]/20 border border-[#96BF8A]/40 px-3 py-1 text-[11px] font-bold text-[#00412E]">
+                  <Users className="h-3.5 w-3.5 text-[#00412E]" /> Roommate & Flatshare Matching
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold text-zinc-950">
                   Looking to split rent or share an apartment in {selectedCity}?
@@ -911,17 +1028,11 @@ export function CleanHomeClient({
               <div className="flex flex-wrap items-center gap-3 shrink-0">
                 <Link
                   href="/roommates"
-                  className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-violet-700 transition-all shadow-xs cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#00412E] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#002d20] transition-all shadow-xs cursor-pointer group"
                 >
-                  <Users className="h-4 w-4" />
+                  <Users className="h-4 w-4 text-[#96BF8A]" />
                   <span>Find Roommates</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-                <Link
-                  href={currentUser ? "/roommates/new" : "/login?returnUrl=/roommates/new"}
-                  className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
-                >
-                  <span>Post Roommate Need</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-[#96BF8A] group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               </div>
             </div>
@@ -945,12 +1056,12 @@ export function CleanHomeClient({
 
             <div className="flex items-center justify-between gap-2 mb-1">
               <div className="flex items-center gap-1.5 text-xs text-zinc-500 truncate">
-                <MapPin className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                <MapPin className="h-3.5 w-3.5 text-[#00412E] shrink-0" />
                 <span className="truncate">{selectedProperty.locality}, {selectedProperty.city}</span>
               </div>
               {selectedProperty.distanceKm !== undefined && selectedProperty.distanceKm < Infinity && (
-                <span className="shrink-0 flex items-center gap-1 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-full">
-                  <Navigation className="h-3 w-3 text-indigo-600" />
+                <span className="shrink-0 flex items-center gap-1 text-xs font-bold text-[#00412E] bg-[#eff4ec] border border-[#96BF8A]/40 px-2.5 py-0.5 rounded-full">
+                  <Navigation className="h-3 w-3 text-[#00412E]" />
                   {formatDistance(selectedProperty.distanceKm)}
                 </span>
               )}
@@ -964,7 +1075,7 @@ export function CleanHomeClient({
                 {selectedProperty.genderPolicy}
               </span>
               {selectedProperty.foodIncluded && (
-                <span className="rounded-md bg-emerald-50 text-emerald-700 px-2.5 py-1 text-xs font-bold">
+                <span className="rounded-md bg-[#eff4ec] text-[#00412E] border border-[#96BF8A]/30 px-2.5 py-1 text-xs font-bold">
                   Meals Included
                 </span>
               )}
@@ -976,7 +1087,7 @@ export function CleanHomeClient({
                 {selectedProperty.roomTypeSummaries.map((rt) => (
                   <div key={rt} className="flex items-center justify-between text-xs font-medium text-zinc-800">
                     <span className="flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#00412E]" />
                       {rt}
                     </span>
                   </div>
@@ -993,7 +1104,7 @@ export function CleanHomeClient({
                     </span>
                   )}
                   {selectedProperty.bestSharingOccupancy && selectedProperty.bestSharingOccupancy > 1 ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/80">
+                    <span className="text-[10px] font-bold text-[#00412E] bg-[#96BF8A]/20 px-1.5 py-0.5 rounded-md border border-[#96BF8A]/40">
                       {selectedProperty.bestSharingOccupancy}-Sharing
                     </span>
                   ) : (
@@ -1009,7 +1120,7 @@ export function CleanHomeClient({
               </div>
               <Link
                 href={`/property/${selectedProperty.slug}`}
-                className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 transition-colors"
+                className="rounded-xl bg-[#00412E] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#002d20] transition-colors"
               >
                 View Full Details & Contact
               </Link>

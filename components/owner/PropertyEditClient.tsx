@@ -18,13 +18,30 @@ interface PropertyEditClientProps {
   property: any;
 }
 
+function normalizeGenderPolicy(val: string | null | undefined): "BOYS" | "GIRLS" | "UNISEX" {
+  if (!val) return "UNISEX";
+  const up = String(val).toUpperCase().trim();
+  if (up === "MALE_ONLY" || up === "MALE" || up === "BOYS" || up === "GENTS") return "BOYS";
+  if (up === "FEMALE_ONLY" || up === "FEMALE" || up === "GIRLS" || up === "LADIES") return "GIRLS";
+  return "UNISEX";
+}
+
+function normalizePropertyType(val: string | null | undefined): "PG" | "COLIVING" | "HOSTEL" | "APARTMENT" {
+  if (!val) return "PG";
+  const up = String(val).toUpperCase().trim();
+  if (up === "FLAT" || up === "APARTMENT") return "APARTMENT";
+  if (up === "COLIVING" || up === "CO_LIVING" || up === "CO-LIVING") return "COLIVING";
+  if (up === "HOSTEL") return "HOSTEL";
+  return "PG";
+}
+
 export function PropertyEditClient({ property }: PropertyEditClientProps) {
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: property.name || "",
     description: property.description || "",
-    propertyType: property.propertyType || "PG",
-    genderPolicy: property.genderPolicy || "UNISEX",
+    propertyType: normalizePropertyType(property.propertyType),
+    genderPolicy: normalizeGenderPolicy(property.genderPolicy),
     startingPrice: property.startingPrice !== undefined && property.startingPrice !== null ? String(property.startingPrice) : "",
     locality: property.locality || "",
     city: property.city || "",
@@ -185,7 +202,7 @@ export function PropertyEditClient({ property }: PropertyEditClientProps) {
                 <option value="PG">PG / Paying Guest</option>
                 <option value="HOSTEL">Student Hostel</option>
                 <option value="COLIVING">Co-Living Space</option>
-                <option value="FLAT">Managed Flat / Apartment</option>
+                <option value="APARTMENT">Managed Flat / Apartment</option>
               </select>
             </div>
           </div>
@@ -200,9 +217,9 @@ export function PropertyEditClient({ property }: PropertyEditClientProps) {
                 onChange={(e) => setFormData({ ...formData, genderPolicy: e.target.value as any })}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs focus:border-indigo-600 focus:outline-hidden"
               >
-                <option value="UNISEX">Unisex / Co-ed</option>
-                <option value="MALE_ONLY">Men Only (Gents PG)</option>
-                <option value="FEMALE_ONLY">Women Only (Ladies PG)</option>
+                <option value="UNISEX">Unisex / Coliving</option>
+                <option value="BOYS">Men Only (Gents PG)</option>
+                <option value="GIRLS">Women Only (Ladies PG)</option>
               </select>
             </div>
 

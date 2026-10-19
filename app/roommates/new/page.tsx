@@ -190,7 +190,7 @@ export default async function NewRoommateRequestPage({
       <main className="flex-1 py-10 sm:py-14">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
-            <span className="inline-block rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700 mb-2">
+            <span className="inline-block rounded-full bg-[#eff4ec] border border-[#96BF8A]/40 px-3 py-1 text-xs font-bold text-[#00412E] mb-2">
               Zero Brokerage Matching
             </span>
             <h1 className="text-2xl sm:text-3xl font-black text-zinc-950">
