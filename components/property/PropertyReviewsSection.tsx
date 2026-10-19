@@ -34,6 +34,7 @@ interface PropertyReviewsSectionProps {
   propertyName: string;
   propertySlug: string;
   initialReviews: PropertyReviewData[];
+  hasFood?: boolean;
   currentUser?: {
     id: string;
     email: string | null;
@@ -46,6 +47,7 @@ export function PropertyReviewsSection({
   propertyName,
   propertySlug,
   initialReviews,
+  hasFood = false,
   currentUser,
 }: PropertyReviewsSectionProps) {
   const [reviews, setReviews] = useState<PropertyReviewData[]>(initialReviews);
@@ -123,7 +125,7 @@ export function PropertyReviewsSection({
         title: title.trim() || undefined,
         comment: comment.trim(),
         cleanliness,
-        foodQuality,
+        foodQuality: hasFood ? foodQuality : undefined,
         safety,
       });
 
@@ -266,13 +268,13 @@ export function PropertyReviewsSection({
             </div>
           </div>
 
-          {/* Sub-Aspect Ratings (Cleanliness, Food, Safety) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          {/* Sub-Aspect Ratings (Cleanliness, Security, and optional Food Quality) */}
+          <div className={`grid grid-cols-1 ${hasFood ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-3 pt-2`}>
             {/* Cleanliness */}
             <div className="rounded-xl bg-white p-3 border border-[#E8EAE5]">
               <div className="flex items-center justify-between text-xs font-semibold text-zinc-700 mb-1">
                 <span className="flex items-center gap-1 text-[11px]">
-                  <Sparkles className="h-3 w-3 text-[#00412E]" /> Cleanliness
+                  <Sparkles className="h-3 w-3 text-[#00412E]" /> Cleanliness & Hygiene
                 </span>
                 <span className="font-bold text-[#00412E]">{cleanliness}★</span>
               </div>
@@ -294,37 +296,11 @@ export function PropertyReviewsSection({
               </div>
             </div>
 
-            {/* Food Quality */}
-            <div className="rounded-xl bg-white p-3 border border-[#E8EAE5]">
-              <div className="flex items-center justify-between text-xs font-semibold text-zinc-700 mb-1">
-                <span className="flex items-center gap-1 text-[11px]">
-                  <Utensils className="h-3 w-3 text-[#00412E]" /> Food Quality
-                </span>
-                <span className="font-bold text-[#00412E]">{foodQuality}★</span>
-              </div>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((val) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setFoodQuality(val)}
-                    className="cursor-pointer"
-                  >
-                    <Star
-                      className={`h-4 w-4 ${
-                        val <= foodQuality ? "fill-amber-400 text-amber-400" : "text-zinc-200"
-                      }`}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Safety & Security */}
             <div className="rounded-xl bg-white p-3 border border-[#E8EAE5]">
               <div className="flex items-center justify-between text-xs font-semibold text-zinc-700 mb-1">
                 <span className="flex items-center gap-1 text-[11px]">
-                  <Shield className="h-3 w-3 text-[#00412E]" /> Safety
+                  <Shield className="h-3 w-3 text-[#00412E]" /> Security & Safety
                 </span>
                 <span className="font-bold text-[#00412E]">{safety}★</span>
               </div>
@@ -345,6 +321,34 @@ export function PropertyReviewsSection({
                 ))}
               </div>
             </div>
+
+            {/* Food Quality (Only shown when property provides food) */}
+            {hasFood && (
+              <div className="rounded-xl bg-white p-3 border border-[#E8EAE5]">
+                <div className="flex items-center justify-between text-xs font-semibold text-zinc-700 mb-1">
+                  <span className="flex items-center gap-1 text-[11px]">
+                    <Utensils className="h-3 w-3 text-[#00412E]" /> Food Quality
+                  </span>
+                  <span className="font-bold text-[#00412E]">{foodQuality}★</span>
+                </div>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setFoodQuality(val)}
+                      className="cursor-pointer"
+                    >
+                      <Star
+                        className={`h-4 w-4 ${
+                          val <= foodQuality ? "fill-amber-400 text-amber-400" : "text-zinc-200"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Title */}
@@ -446,7 +450,7 @@ export function PropertyReviewsSection({
             </div>
           </div>
 
-          <div className="sm:col-span-3 grid grid-cols-3 gap-3 text-center sm:text-left">
+          <div className={`sm:col-span-3 grid ${hasFood && avgFood ? "grid-cols-3" : "grid-cols-2"} gap-3 text-center sm:text-left`}>
             {avgCleanliness && (
               <div className="rounded-xl bg-white p-2.5 border border-[#E8EAE5]">
                 <div className="text-[10px] uppercase font-bold text-zinc-400">Cleanliness</div>
@@ -456,21 +460,21 @@ export function PropertyReviewsSection({
                 </div>
               </div>
             )}
-            {avgFood && (
+            {avgSafety && (
+              <div className="rounded-xl bg-white p-2.5 border border-[#E8EAE5]">
+                <div className="text-[10px] uppercase font-bold text-zinc-400">Security</div>
+                <div className="text-sm font-bold text-zinc-900 mt-0.5 flex items-center justify-center sm:justify-start gap-1">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  {avgSafety.toFixed(1)}
+                </div>
+              </div>
+            )}
+            {hasFood && avgFood && (
               <div className="rounded-xl bg-white p-2.5 border border-[#E8EAE5]">
                 <div className="text-[10px] uppercase font-bold text-zinc-400">Food Quality</div>
                 <div className="text-sm font-bold text-zinc-900 mt-0.5 flex items-center justify-center sm:justify-start gap-1">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                   {avgFood.toFixed(1)}
-                </div>
-              </div>
-            )}
-            {avgSafety && (
-              <div className="rounded-xl bg-white p-2.5 border border-[#E8EAE5]">
-                <div className="text-[10px] uppercase font-bold text-zinc-400">Safety</div>
-                <div className="text-sm font-bold text-zinc-900 mt-0.5 flex items-center justify-center sm:justify-start gap-1">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                  {avgSafety.toFixed(1)}
                 </div>
               </div>
             )}
@@ -535,16 +539,16 @@ export function PropertyReviewsSection({
               </p>
 
               {/* Sub-aspect Badges */}
-              {(r.cleanliness || r.foodQuality || r.safety) && (
+              {(r.cleanliness || (hasFood && r.foodQuality) || r.safety) && (
                 <div className="flex flex-wrap gap-2 pt-1 border-t border-zinc-100 text-[10px] text-zinc-500 font-medium">
                   {r.cleanliness && (
                     <span>Cleanliness: <strong className="text-zinc-800">{r.cleanliness}/5</strong></span>
                   )}
-                  {r.foodQuality && (
-                    <span>• Food: <strong className="text-zinc-800">{r.foodQuality}/5</strong></span>
-                  )}
                   {r.safety && (
-                    <span>• Safety: <strong className="text-zinc-800">{r.safety}/5</strong></span>
+                    <span>• Security: <strong className="text-zinc-800">{r.safety}/5</strong></span>
+                  )}
+                  {hasFood && r.foodQuality && (
+                    <span>• Food: <strong className="text-zinc-800">{r.foodQuality}/5</strong></span>
                   )}
                 </div>
               )}

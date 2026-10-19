@@ -304,6 +304,7 @@ export function PropertyDetailClient({
                 propertyName={property.name}
                 propertySlug={property.slug}
                 initialReviews={property.reviews || []}
+                hasFood={Boolean(property.foodIncluded && property.foodOffering !== "NO_FOOD")}
                 currentUser={currentUser}
               />
 

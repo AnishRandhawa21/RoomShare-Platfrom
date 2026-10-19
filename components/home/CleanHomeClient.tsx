@@ -169,11 +169,6 @@ function PropertyCard({
               <CheckCircle2 className="h-2.5 w-2.5 text-[#96BF8A]" /> Verified
             </span>
           )}
-          {pg.rating && (
-            <span className="rounded-full bg-white/95 backdrop-blur-xs px-2 py-0.5 text-[10px] font-black text-zinc-900 flex items-center gap-1 shadow-xs border border-zinc-200">
-              <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" /> {pg.rating.toFixed(1)}
-            </span>
-          )}
           {pg.foodIncluded && (
             <span className="rounded-full bg-zinc-900/80 backdrop-blur-xs px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-1">
               <Utensils className="h-2.5 w-2.5" /> Meals
@@ -210,11 +205,22 @@ function PropertyCard({
               </span>
             )}
           </div>
-          <Link href={`/property/${pg.slug}`}>
-            <h3 className="text-base font-bold text-zinc-950 group-hover:text-[#00412E] transition-colors">
-              {pg.name}
-            </h3>
-          </Link>
+          <div className="flex items-center justify-between gap-2">
+            <Link href={`/property/${pg.slug}`} className="flex-1 min-w-0">
+              <h3 className="text-base font-bold text-zinc-950 group-hover:text-[#00412E] transition-colors truncate">
+                {pg.name}
+              </h3>
+            </Link>
+            {pg.rating ? (
+              <span className="shrink-0 inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/70 px-2 py-0.5 text-xs font-bold text-amber-900 shadow-2xs">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                <span>{pg.rating.toFixed(1)}</span>
+                {pg.reviewCount ? (
+                  <span className="text-[10px] text-zinc-400 font-normal">({pg.reviewCount})</span>
+                ) : null}
+              </span>
+            ) : null}
+          </div>
 
           {/* Room types pill */}
           {pg.roomTypeSummaries.length > 0 && (
