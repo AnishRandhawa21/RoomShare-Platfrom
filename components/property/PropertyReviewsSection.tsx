@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -11,11 +11,13 @@ import {
   Shield,
   Loader2,
   Send,
+  Edit3,
 } from "lucide-react";
 import { submitPropertyReviewAction } from "@/actions/review";
 
 export interface PropertyReviewData {
   id: string;
+  userId: string;
   rating: number;
   title: string | null;
   comment: string;
@@ -53,19 +55,47 @@ export function PropertyReviewsSection({
   const [reviews, setReviews] = useState<PropertyReviewData[]>(initialReviews);
   const [showReviewForm, setShowReviewForm] = useState(false);
 
+  // Check if current user already has a review for this property
+  const userExistingReview = useMemo(() => {
+    if (!currentUser?.id) return null;
+    return reviews.find((r) => r.userId === currentUser.id) || null;
+  }, [reviews, currentUser]);
+
   // Form State
-  const [rating, setRating] = useState<number>(5);
+  const [rating, setRating] = useState<number>(userExistingReview?.rating || 5);
   const [hoverRating, setHoverRating] = useState<number>(0);
-  const [cleanliness, setCleanliness] = useState<number>(5);
-  const [foodQuality, setFoodQuality] = useState<number>(5);
-  const [safety, setSafety] = useState<number>(5);
-  const [title, setTitle] = useState("");
-  const [comment, setComment] = useState("");
+  const [cleanliness, setCleanliness] = useState<number>(userExistingReview?.cleanliness || 5);
+  const [foodQuality, setFoodQuality] = useState<number>(userExistingReview?.foodQuality || 5);
+  const [safety, setSafety] = useState<number>(userExistingReview?.safety || 5);
+  const [title, setTitle] = useState(userExistingReview?.title || "");
+  const [comment, setComment] = useState(userExistingReview?.comment || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  // Handle opening form with prefilled values
+  const handleOpenForm = (forceOpen?: boolean) => {
+    if (userExistingReview) {
+      setRating(userExistingReview.rating);
+      setTitle(userExistingReview.title || "");
+      setComment(userExistingReview.comment || "");
+      if (userExistingReview.cleanliness) setCleanliness(userExistingReview.cleanliness);
+      if (userExistingReview.foodQuality) setFoodQuality(userExistingReview.foodQuality);
+      if (userExistingReview.safety) setSafety(userExistingReview.safety);
+    }
+    setShowReviewForm((prev) => (typeof forceOpen === "boolean" ? forceOpen : !prev));
+    setFeedbackMessage(null);
+  };
+
+  // Sort reviews so current user's review is shown at the top
+  const sortedReviews = useMemo(() => {
+    if (!currentUser?.id) return reviews;
+    const myReview = reviews.find((r) => r.userId === currentUser.id);
+    const otherReviews = reviews.filter((r) => r.userId !== currentUser.id);
+    return myReview ? [myReview, ...otherReviews] : otherReviews;
+  }, [reviews, currentUser]);
 
   // Calculate aggregates
   const totalReviews = reviews.length;
@@ -132,12 +162,13 @@ export function PropertyReviewsSection({
       if (res.success && res.review) {
         setFeedbackMessage({
           type: "success",
-          text: res.message || "Your review has been published!",
+          text: res.message || "Your review has been saved!",
         });
 
-        // Optimistically update reviews list
+        // Optimistically update reviews list (ensures one review per user)
         const newReview: PropertyReviewData = {
           id: res.review.id,
+          userId: res.review.userId,
           rating: res.review.rating,
           title: res.review.title,
           comment: res.review.comment,
@@ -149,15 +180,15 @@ export function PropertyReviewsSection({
         };
 
         setReviews((prev) => {
-          const filtered = prev.filter((r) => r.id !== newReview.id);
+          const filtered = prev.filter(
+            (r) => r.id !== newReview.id && r.userId !== newReview.userId
+          );
           return [newReview, ...filtered];
         });
 
-        // Reset form after short delay
+        // Close form after short delay
         setTimeout(() => {
           setShowReviewForm(false);
-          setTitle("");
-          setComment("");
         }, 1200);
       } else {
         setFeedbackMessage({
@@ -198,17 +229,25 @@ export function PropertyReviewsSection({
 
         <div>
           {currentUser ? (
-            <button
-              type="button"
-              onClick={() => {
-                setShowReviewForm(!showReviewForm);
-                setFeedbackMessage(null);
-              }}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#00412E] px-4 py-2 text-xs sm:text-sm font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs cursor-pointer"
-            >
-              <Star className="h-4 w-4 fill-amber-300 text-amber-300" />
-              <span>{showReviewForm ? "Close Form" : "Rate this Property"}</span>
-            </button>
+            userExistingReview ? (
+              <button
+                type="button"
+                onClick={() => handleOpenForm()}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#96BF8A] bg-[#eff4ec] px-4 py-2 text-xs sm:text-sm font-bold text-[#00412E] hover:bg-[#96BF8A]/30 transition-colors shadow-2xs cursor-pointer"
+              >
+                <Edit3 className="h-4 w-4 text-[#00412E]" />
+                <span>{showReviewForm ? "Close Editor" : "Edit Your Review"}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleOpenForm()}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#00412E] px-4 py-2 text-xs sm:text-sm font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs cursor-pointer"
+              >
+                <Star className="h-4 w-4 fill-amber-300 text-amber-300" />
+                <span>{showReviewForm ? "Close Form" : "Rate this Property"}</span>
+              </button>
+            )
           ) : (
             <Link
               href={`/login?returnUrl=/property/${propertySlug}#reviews-section`}
@@ -229,11 +268,20 @@ export function PropertyReviewsSection({
         >
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-zinc-950 flex items-center gap-2">
-              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-              Rate your experience at {propertyName}
+              {userExistingReview ? (
+                <>
+                  <Edit3 className="h-4 w-4 text-[#00412E]" />
+                  <span>Update your review for {propertyName}</span>
+                </>
+              ) : (
+                <>
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  <span>Rate your experience at {propertyName}</span>
+                </>
+              )}
             </h3>
             <span className="text-[11px] font-semibold text-zinc-400">
-              Posting as {currentUser.profile?.fullName || "Verified User"}
+              {userExistingReview ? "You can update your review anytime" : `Posting as ${currentUser.profile?.fullName || "Verified User"}`}
             </span>
           </div>
 
@@ -413,12 +461,12 @@ export function PropertyReviewsSection({
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Submitting...</span>
+                  <span>Saving...</span>
                 </>
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" />
-                  <span>Post Rating</span>
+                  <span>{userExistingReview ? "Update Review" : "Post Rating"}</span>
                 </>
               )}
             </button>
@@ -483,50 +531,77 @@ export function PropertyReviewsSection({
       ) : null}
 
       {/* 4. List of Reviews */}
-      {reviews.length > 0 ? (
+      {sortedReviews.length > 0 ? (
         <div className="space-y-4">
-          {reviews.map((r) => (
-            <div
-              key={r.id}
-              className="rounded-2xl border border-[#E8EAE5] bg-white p-4 sm:p-5 space-y-2.5 hover:border-[#96BF8A]/50 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="relative h-9 w-9 rounded-full bg-[#eff4ec] border border-[#96BF8A]/30 overflow-hidden flex items-center justify-center text-xs font-bold text-[#00412E]">
-                    {r.user.avatarUrl ? (
-                      <Image
-                        src={r.user.avatarUrl}
-                        alt={r.user.fullName}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      r.user.fullName.charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
-                      <span>{r.user.fullName}</span>
-                      <span className="inline-flex items-center text-[10px] font-semibold text-[#00412E] bg-[#eff4ec] px-1.5 py-0.2 rounded-full">
-                        <CheckCircle2 className="h-2.5 w-2.5 mr-0.5 text-[#96BF8A]" /> Resident
-                      </span>
+          {sortedReviews.map((r) => {
+            const isMyReview = currentUser?.id === r.userId;
+            return (
+              <div
+                key={r.id}
+                className={`rounded-2xl border p-4 sm:p-5 space-y-2.5 transition-colors ${
+                  isMyReview
+                    ? "border-[#96BF8A] bg-[#eff4ec]/30 shadow-2xs"
+                    : "border-[#E8EAE5] bg-white hover:border-[#96BF8A]/50"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative h-9 w-9 rounded-full bg-[#eff4ec] border border-[#96BF8A]/30 overflow-hidden flex items-center justify-center text-xs font-bold text-[#00412E]">
+                      {r.user.avatarUrl ? (
+                        <Image
+                          src={r.user.avatarUrl}
+                          alt={r.user.fullName}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        r.user.fullName.charAt(0).toUpperCase()
+                      )}
                     </div>
-                    <div className="text-[10px] text-zinc-400">
-                      {new Date(r.createdAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                    <div>
+                      <div className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                        <span>{r.user.fullName}</span>
+                        {isMyReview ? (
+                          <span className="inline-flex items-center text-[10px] font-bold text-[#00412E] bg-[#96BF8A]/30 border border-[#96BF8A]/50 px-2 py-0.5 rounded-full">
+                            Your Review
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center text-[10px] font-semibold text-[#00412E] bg-[#eff4ec] px-1.5 py-0.2 rounded-full">
+                            <CheckCircle2 className="h-2.5 w-2.5 mr-0.5 text-[#96BF8A]" /> Resident
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-zinc-400">
+                        {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Star Score */}
-                <div className="flex items-center gap-1 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-md text-xs font-bold text-amber-900">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                  <span>{r.rating}.0</span>
+                  {/* Star Score & Quick Edit Action */}
+                  <div className="flex items-center gap-2">
+                    {isMyReview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleOpenForm(true);
+                          document.getElementById("reviews-section")?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-[#00412E] hover:underline cursor-pointer mr-1"
+                      >
+                        <Edit3 className="h-3 w-3" />
+                        <span>Edit</span>
+                      </button>
+                    )}
+                    <div className="flex items-center gap-1 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-md text-xs font-bold text-amber-900">
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      <span>{r.rating}.0</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
               {/* Title & Comment */}
               {r.title && (
@@ -553,8 +628,9 @@ export function PropertyReviewsSection({
                 </div>
               )}
             </div>
-          ))}
-        </div>
+          );
+        })}
+      </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-[#E8EAE5] p-8 text-center bg-zinc-50/50">
           <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-[#eff4ec] text-[#00412E] mb-2">

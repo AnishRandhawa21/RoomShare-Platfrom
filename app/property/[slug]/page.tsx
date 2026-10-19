@@ -222,6 +222,7 @@ async function PropertyDataLoader({ params }: PropertyPageProps) {
     },
     reviews: property.reviews.map((r) => ({
       id: r.id,
+      userId: r.userId,
       rating: r.rating,
       title: r.title,
       comment: r.comment,

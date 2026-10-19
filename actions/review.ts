@@ -20,6 +20,7 @@ export interface ReviewActionResult {
   error?: string;
   review?: {
     id: string;
+    userId: string;
     rating: number;
     title: string | null;
     comment: string;
@@ -133,6 +134,7 @@ export async function submitPropertyReviewAction(
       message: existing ? "Your rating and review has been updated!" : "Thank you! Your rating has been submitted.",
       review: {
         id: savedReview.id,
+        userId: savedReview.userId,
         rating: savedReview.rating,
         title: savedReview.title,
         comment: savedReview.comment,
