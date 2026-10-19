@@ -20,6 +20,15 @@ export interface PropertyListingSummary {
   distanceKm?: number;
   hasActiveRoommateRequest?: boolean;
   activeRoommateRequestCount?: number;
+  // Search Quality & Ranking Signals
+  isVerified?: boolean;
+  isOwnerVerified?: boolean;
+  isFeatured?: boolean;
+  rating?: number;
+  reviewCount?: number;
+  amenitiesCount?: number;
+  availableRoomsCount?: number;
+  createdAt?: string | Date;
 }
 
 export interface RoommateRequestSummary {
@@ -37,6 +46,8 @@ export interface RoommateRequestSummary {
   creatorAvatar: string | null;
   creatorProfession?: string | null;
   moveInDate: string;
+  isCreatorVerified?: boolean;
+  createdAt?: string | Date;
 }
 
 /**
@@ -47,6 +58,7 @@ export async function getLiveProperties(params?: {
   searchQuery?: string;
   genderPolicy?: string;
   availabilityFilter?: "all" | "available" | "roommate";
+  sortBy?: "recommended" | "nearest" | "price-asc" | "price-desc" | "rating" | "newest";
 }): Promise<PropertyListingSummary[]> {
   try {
     const whereClause: Prisma.PropertyWhereInput = {
@@ -83,9 +95,32 @@ export async function getLiveProperties(params?: {
     const properties = await prisma.property.findMany({
       where: whereClause,
       include: {
+        owner: {
+          select: { verificationStatus: true },
+        },
+        featuredListings: {
+          where: { endDate: { gt: new Date() }, status: "ACTIVE" },
+          select: { id: true },
+          take: 1,
+        },
+        amenities: {
+          select: { id: true },
+        },
+        reviews: {
+          where: { status: "APPROVED" },
+          select: { rating: true },
+        },
         roomTypes: {
           where: { isActive: true },
-          select: { name: true, monthlyRent: true, occupancy: true },
+          select: {
+            name: true,
+            monthlyRent: true,
+            occupancy: true,
+            rooms: {
+              where: { status: "AVAILABLE" },
+              select: { id: true },
+            },
+          },
         },
         images: {
           orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
@@ -98,10 +133,10 @@ export async function getLiveProperties(params?: {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 24,
+      take: 48,
     });
 
-    return properties.map((p) => {
+    const mappedListings: PropertyListingSummary[] = properties.map((p) => {
       let chosenRoomType: { name: string; monthlyRent: number; occupancy: number } | null = null;
       let lowestPerPerson = Infinity;
 
@@ -136,6 +171,19 @@ export async function getLiveProperties(params?: {
         new Set(p.roomTypes.map((r) => r.name))
       );
 
+      // Reviews average
+      let avgRating: number | undefined = undefined;
+      if (p.reviews && p.reviews.length > 0) {
+        const sum = p.reviews.reduce((acc, r) => acc + r.rating, 0);
+        avgRating = Math.round((sum / p.reviews.length) * 10) / 10;
+      }
+
+      // Available room inventory
+      const availableRoomsCount = p.roomTypes.reduce(
+        (acc, rt) => acc + (rt.rooms?.length || 0),
+        0
+      );
+
       return {
         id: p.id,
         name: p.name,
@@ -154,8 +202,19 @@ export async function getLiveProperties(params?: {
         longitude: p.longitude,
         hasActiveRoommateRequest: p.roommateRequests.length > 0,
         activeRoommateRequestCount: p.roommateRequests.length,
+        // Quality signals
+        isVerified: p.isVerified,
+        isOwnerVerified: p.owner?.verificationStatus === "VERIFIED",
+        isFeatured: p.featuredListings && p.featuredListings.length > 0,
+        rating: avgRating,
+        reviewCount: p.reviews.length,
+        amenitiesCount: p.amenities.length,
+        availableRoomsCount,
+        createdAt: p.createdAt,
       };
     });
+
+    return mappedListings;
   } catch (err) {
     console.error("Error fetching live properties:", err);
     return [];
@@ -205,6 +264,7 @@ export async function getLiveRoommateRequests(params?: {
                 fullName: true,
                 avatarUrl: true,
                 profession: true,
+                verificationStatus: true,
               },
             },
           },
@@ -217,7 +277,7 @@ export async function getLiveRoommateRequests(params?: {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 12,
+      take: 24,
     });
 
     return requests.map((r) => ({
@@ -238,6 +298,8 @@ export async function getLiveRoommateRequests(params?: {
         month: "short",
         day: "numeric",
       }),
+      isCreatorVerified: r.creator.profile?.verificationStatus === "VERIFIED",
+      createdAt: r.createdAt,
     }));
   } catch (err) {
     console.error("Error fetching live roommate requests:", err);

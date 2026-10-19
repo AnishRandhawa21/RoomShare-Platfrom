@@ -24,10 +24,10 @@
 - [x] **Milestone 14: Owner Dashboard (Metrics & Room Inventory)** (Completed)
 - [x] **Milestone 18: Admin Portal (`/admin`) & Invite-Only Onboarding** (Completed)
 - [x] **Milestone 19: Reports, Reviews & Moderation Trail** (Completed)
+- [x] **Milestone 20: Search Quality & Ranking** (Completed)
 - [ ] **Milestone 15: Subscription & Monetization System** (Deferred to last)
 - [ ] **Milestone 16: Razorpay Payment Integration** (Deferred to last)
 - [ ] **Milestone 17: Featured Listings Boost** (Deferred to last)
-- [ ] **Milestone 20: Search Quality & Ranking**
 - [ ] **Milestone 21: SEO Optimization & Dynamic Landing Pages**
 - [ ] **Milestone 22: Performance Tuning & Caching**
 - [ ] **Milestone 23: Security Hardening & Row Level Security (RLS)**
@@ -269,8 +269,29 @@
 
 ---
 
-### Phase 20, 21, 22, 23, 24 & 25 — Production Readiness & Deployment
-- [ ] Search ranking heuristics (location relevance, availability, completeness)
+### Phase 20 — Search Quality & Ranking (Completed)
+- [x] Multi-factor property ranking engine (`lib/ranking.ts`):
+  - [x] Location relevance & exact locality match scoring (up to 35 pts) + GPS proximity decay scoring
+  - [x] Listing completeness & media depth (up to 25 pts)
+  - [x] Real-time room inventory & availability signals (up to 20 pts)
+  - [x] Trust & verification signals (admin verified, owner KYC: up to 15 pts)
+  - [x] Social proof & verified reviews rating bonus (up to 10 pts)
+  - [x] Active featured listing boost (+15 pts)
+- [x] Typo-tolerant search autocomplete & suggestions (`actions/search.ts`):
+  - [x] Sub-string and case-insensitive matching across database Localities, Properties, and Roommate Requests
+  - [x] Interactive floating autocomplete suggestions popover in hero search input
+- [x] Multi-factor roommate request ranking (`rankRoommateRequests`):
+  - [x] Prioritizes verified user profiles, full profile details, and upcoming move-in dates
+- [x] Multi-criteria sorting controls across PG finder & Roommates:
+  - [x] Recommended (Best Match), Nearest First (GPS), Top Rated, Price: Low to High, Price: High to Low, Newest Listed
+- [x] Smart zero-results fallbacks:
+  - [x] Query-aware empty states
+  - [x] 1-Click fallback buttons suggesting popular alternative localities in the same city
+  - [x] Fast city switchers and clear filter shortcuts
+
+---
+
+### Phase 21, 22, 23, 24 & 25 — Production Readiness & Deployment
 - [ ] SEO: dynamic metadata, sitemaps, slug routes (`/pg/[city]/[locality]`)
 - [ ] Performance: lazy loading, image optimization, pagination
 - [ ] Supabase Row Level Security (RLS) policies deployed

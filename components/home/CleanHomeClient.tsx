@@ -25,11 +25,14 @@ import {
   RefreshCw,
   ChevronDown,
   Check,
+  Star,
 } from "lucide-react";
 import type {
   PropertyListingSummary,
   DiscoveryLocationCity,
 } from "@/lib/discovery";
+import { rankProperties } from "@/lib/ranking";
+import { getSearchSuggestionsAction, type SearchSuggestionsResult } from "@/actions/search";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { PropertyMap } from "@/components/map/PropertyMap";
 import { getPropertiesInBoundsAction } from "@/actions/map";
@@ -140,7 +143,12 @@ function PropertyCard({
           </div>
         )}
 
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+        <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 z-10 max-w-[75%]">
+          {pg.isFeatured && (
+            <span className="rounded-full bg-amber-500 text-white px-2 py-0.5 text-[10px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1">
+              ★ Featured
+            </span>
+          )}
           <span
             className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-xs ${
               pg.genderPolicy === "BOYS"
@@ -156,6 +164,16 @@ function PropertyCard({
               ? "Girls"
               : "Coliving"}
           </span>
+          {pg.isVerified && (
+            <span className="rounded-full bg-[#00412E]/90 backdrop-blur-xs px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-0.5 shadow-xs">
+              <CheckCircle2 className="h-2.5 w-2.5 text-[#96BF8A]" /> Verified
+            </span>
+          )}
+          {pg.rating && (
+            <span className="rounded-full bg-white/95 backdrop-blur-xs px-2 py-0.5 text-[10px] font-black text-zinc-900 flex items-center gap-1 shadow-xs border border-zinc-200">
+              <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" /> {pg.rating.toFixed(1)}
+            </span>
+          )}
           {pg.foodIncluded && (
             <span className="rounded-full bg-zinc-900/80 backdrop-blur-xs px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-1">
               <Utensils className="h-2.5 w-2.5" /> Meals
@@ -385,7 +403,45 @@ export function CleanHomeClient({
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"recommended" | "nearest" | "price-asc" | "price-desc">("recommended");
+  const [sortBy, setSortBy] = useState<"recommended" | "nearest" | "price-asc" | "price-desc" | "rating" | "newest">("recommended");
+
+  // Search Autocomplete State
+  const [suggestions, setSuggestions] = useState<SearchSuggestionsResult | null>(null);
+  const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Debounced search suggestions fetch
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingSuggestions(true);
+      try {
+        const res = await getSearchSuggestionsAction(searchQuery, selectedCity);
+        setSuggestions(res);
+      } catch (err) {
+        console.error("Error fetching suggestions:", err);
+      } finally {
+        setIsSearchingSuggestions(false);
+      }
+    }, 220);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedCity]);
 
   const heroGenderOptions = useMemo(() => [
     { value: "all", label: "All Genders" },
@@ -395,10 +451,12 @@ export function CleanHomeClient({
   ], []);
 
   const sortOptions = useMemo(() => [
-    { value: "recommended", label: "Recommended" },
+    { value: "recommended", label: "Recommended (Best Match)" },
     ...(userLocation ? [{ value: "nearest", label: "Nearest First" }] : []),
+    { value: "rating", label: "Top Rated" },
     { value: "price-asc", label: "Price: Low to High" },
     { value: "price-desc", label: "Price: High to Low" },
+    { value: "newest", label: "Newest Listed" },
   ], [userLocation]);
 
   const handleLocateMe = () => {
@@ -549,16 +607,17 @@ export function CleanHomeClient({
         return matchesCity && matchesQuery && matchesGender;
       });
 
-    // Sorting
-    if (sortBy === "nearest") {
-      matched.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
-    } else if (sortBy === "price-asc") {
-      matched.sort((a, b) => a.startingPrice - b.startingPrice);
-    } else if (sortBy === "price-desc") {
-      matched.sort((a, b) => b.startingPrice - a.startingPrice);
-    }
-
-    return matched;
+    // Apply multi-factor search ranking heuristics & requested sorting
+    return rankProperties(
+      matched,
+      {
+        query: searchQuery,
+        selectedCity: selectedCity !== "All" ? selectedCity : undefined,
+        userLocation,
+        targetGender: selectedGender !== "all" ? selectedGender : undefined,
+      },
+      sortBy
+    );
   }, [
     liveProperties,
     selectedCity,
@@ -619,24 +678,136 @@ export function CleanHomeClient({
             <div className="mt-6 max-w-3xl mx-auto">
               <div className="rounded-2xl border border-[#E8EAE5] bg-white p-2.5 sm:p-3 shadow-sm">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
-                  {/* Locality Input */}
-                  <div className="sm:col-span-7 flex items-center rounded-xl bg-[#E8EAE5]/40 px-3.5 py-2.5 border border-[#E8EAE5] focus-within:border-[#00412E] focus-within:bg-white transition-all">
-                    <MapPin className="h-4 w-4 text-[#00412E] shrink-0 mr-2.5" />
-                    <input
-                      id="locality-search-input"
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={`Search locality or PG in ${selectedCity}...`}
-                      className="w-full bg-transparent text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery("")}
-                        className="text-zinc-400 hover:text-zinc-600 cursor-pointer"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                  {/* Locality Input with Smart Autocomplete */}
+                  <div ref={searchContainerRef} className="sm:col-span-7 relative">
+                    <div className="flex items-center rounded-xl bg-[#E8EAE5]/40 px-3.5 py-2.5 border border-[#E8EAE5] focus-within:border-[#00412E] focus-within:bg-white transition-all">
+                      <MapPin className="h-4 w-4 text-[#00412E] shrink-0 mr-2.5" />
+                      <input
+                        id="locality-search-input"
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSearchQuery(val);
+                          if (val.trim().length >= 2) {
+                            setShowSuggestions(true);
+                          } else {
+                            setShowSuggestions(false);
+                          }
+                        }}
+                        onFocus={() => {
+                          if (searchQuery.trim().length >= 2) setShowSuggestions(true);
+                        }}
+                        placeholder={`Search locality or PG in ${selectedCity}...`}
+                        className="w-full bg-transparent text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
+                      />
+                      {isSearchingSuggestions ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-400 shrink-0 ml-1.5" />
+                      ) : searchQuery ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery("");
+                            setSuggestions(null);
+                            setShowSuggestions(false);
+                          }}
+                          className="text-zinc-400 hover:text-zinc-600 cursor-pointer ml-1.5"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {/* Suggestions Popover */}
+                    {showSuggestions && searchQuery.trim().length >= 2 && suggestions && suggestions.totalMatches > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl border border-[#E8EAE5] bg-white p-2.5 shadow-xl text-left max-h-80 overflow-y-auto">
+                        {/* Matching Localities */}
+                        {suggestions.localities.length > 0 && (
+                          <div className="mb-2.5">
+                            <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                              Localities
+                            </div>
+                            {suggestions.localities.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => {
+                                  setSearchQuery(item.title);
+                                  setShowSuggestions(false);
+                                }}
+                                className="w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-[#eff4ec] hover:text-[#00412E] transition-colors cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <MapPin className="h-3.5 w-3.5 text-[#00412E] shrink-0" />
+                                  <span className="truncate">{item.title}</span>
+                                </div>
+                                <span className="text-[10px] text-zinc-400 shrink-0">{item.subtitle}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Matching Properties */}
+                        {suggestions.properties.length > 0 && (
+                          <div className="mb-2.5">
+                            <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                              Properties & PGs
+                            </div>
+                            {suggestions.properties.map((item) => (
+                              <Link
+                                key={item.id}
+                                href={item.url}
+                                onClick={() => setShowSuggestions(false)}
+                                className="w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-[#eff4ec] hover:text-[#00412E] transition-colors cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <Building2 className="h-3.5 w-3.5 text-[#00412E] shrink-0" />
+                                  <span className="truncate font-bold text-zinc-900">{item.title}</span>
+                                  {item.badge && (
+                                    <span className="text-[9px] font-bold bg-[#eff4ec] border border-[#96BF8A]/40 text-[#00412E] px-1.5 py-0.5 rounded-sm">
+                                      {item.badge}
+                                    </span>
+                                  )}
+                                </div>
+                                {item.price ? (
+                                  <span className="text-[11px] font-bold text-[#00412E] shrink-0">
+                                    ₹{item.price.toLocaleString("en-IN")}/mo
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-zinc-400 shrink-0">{item.subtitle}</span>
+                                )}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Matching Roommates */}
+                        {suggestions.roommates.length > 0 && (
+                          <div>
+                            <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                              Roommate Posts
+                            </div>
+                            {suggestions.roommates.map((item) => (
+                              <Link
+                                key={item.id}
+                                href={item.url}
+                                onClick={() => setShowSuggestions(false)}
+                                className="w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-[#eff4ec] hover:text-[#00412E] transition-colors cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <Users className="h-3.5 w-3.5 text-[#00412E] shrink-0" />
+                                  <span className="truncate">{item.title}</span>
+                                </div>
+                                {item.price ? (
+                                  <span className="text-[11px] font-bold text-zinc-900 shrink-0">
+                                    ₹{item.price.toLocaleString("en-IN")}/mo
+                                  </span>
+                                ) : null}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -962,18 +1133,54 @@ export function CleanHomeClient({
                 </div>
               )
             ) : (
-              // Clean empty state for PGs
-              <div className="mt-12 rounded-3xl border border-dashed border-zinc-200 p-10 sm:p-14 text-center max-w-lg mx-auto">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 mb-4">
+              // Clean empty state for PGs with smart zero-results fallbacks
+              <div className="mt-12 rounded-3xl border border-dashed border-[#E8EAE5] bg-zinc-50/50 p-10 sm:p-14 text-center max-w-lg mx-auto">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eff4ec] text-[#00412E] border border-[#96BF8A]/30 mb-4">
                   <Building2 className="h-6 w-6" />
                 </div>
-                <h3 className="text-base font-bold text-zinc-900">
-                  No PGs currently listed in {selectedCity}
+                <h3 className="text-base font-bold text-zinc-950">
+                  {searchQuery.trim()
+                    ? `No properties found for "${searchQuery}"`
+                    : `No PGs currently listed in ${selectedCity}`}
                 </h3>
                 <p className="mt-1.5 text-xs sm:text-sm text-zinc-500 leading-relaxed">
-                  We are currently expanding our direct-from-owner network. Choose another city or list your property if you are an accommodation owner.
+                  {searchQuery.trim()
+                    ? `We couldn't find an exact match in ${selectedCity}. Try checking nearby localities below or clearing your search.`
+                    : `We are actively onboarding verified properties in ${selectedCity}. Explore other cities or list your property if you are an accommodation owner.`}
                 </p>
+
+                {/* Smart 1-Click Nearby Locality Suggestions */}
+                {searchQuery.trim() && quickLocalities.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-[#E8EAE5]/60">
+                    <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2">
+                      Popular localities in {selectedCity}:
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                      {quickLocalities.slice(0, 5).map((loc) => (
+                        <button
+                          key={loc}
+                          type="button"
+                          onClick={() => setSearchQuery(loc)}
+                          className="rounded-full bg-white border border-[#E8EAE5] px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-[#eff4ec] hover:border-[#96BF8A]/50 hover:text-[#00412E] transition-all cursor-pointer shadow-2xs"
+                        >
+                          {loc}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+                  {searchQuery.trim() ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] transition-colors cursor-pointer shadow-2xs"
+                    >
+                      Clear Search Filter
+                    </button>
+                  ) : null}
+
                   {availableCities
                     ?.filter((c) => (c.propertyCount || 0) > 0 && c.name.toLowerCase() !== selectedCity.toLowerCase())
                     .slice(0, 2)
@@ -984,7 +1191,7 @@ export function CleanHomeClient({
                           setSelectedCity(c.name);
                           setSearchQuery("");
                         }}
-                        className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+                        className="rounded-xl border border-[#E8EAE5] bg-white px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer shadow-2xs"
                       >
                         View {c.name} PGs ({c.propertyCount})
                       </button>
@@ -994,7 +1201,7 @@ export function CleanHomeClient({
                       setSelectedCity("All");
                       setSearchQuery("");
                     }}
-                    className="rounded-xl bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                    className="rounded-xl border border-[#E8EAE5] bg-white px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer shadow-2xs"
                   >
                     Browse All Locations
                   </button>

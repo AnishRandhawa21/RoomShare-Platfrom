@@ -12,8 +12,10 @@ import {
   Check,
   Utensils,
   Flame,
+  ArrowUpDown,
 } from "lucide-react";
 import { RoommateCard, type RoommateCardProps } from "@/components/roommate/RoommateCard";
+import { rankRoommateRequests } from "@/lib/ranking";
 
 interface DropdownOption {
   value: string;
@@ -148,6 +150,14 @@ export function RoommateDiscoveryClient({
   const [selectedDiet, setSelectedDiet] = useState<string>("all");
   const [selectedSmoking, setSelectedSmoking] = useState<string>("all");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<"recommended" | "soonest" | "rent-asc" | "rent-desc">("recommended");
+
+  const sortOptions = useMemo<DropdownOption[]>(() => [
+    { value: "recommended", label: "Recommended (Best Match)" },
+    { value: "soonest", label: "Move-in: Earliest First" },
+    { value: "rent-asc", label: "Rent: Low to High" },
+    { value: "rent-desc", label: "Rent: High to Low" },
+  ], []);
 
   const cityOptions = useMemo<DropdownOption[]>(() => {
     return [
@@ -182,9 +192,9 @@ export function RoommateDiscoveryClient({
     { value: "SMOKING_OK", label: "Smoking OK" },
   ], []);
 
-  // Filter requests locally
+  // Filter & rank requests locally
   const filteredRequests = useMemo(() => {
-    return initialRequests.filter((item) => {
+    const matched = initialRequests.filter((item) => {
       // City check
       if (
         selectedCity !== "All" &&
@@ -233,6 +243,26 @@ export function RoommateDiscoveryClient({
 
       return true;
     });
+
+    if (sortBy === "soonest") {
+      return [...matched].sort(
+        (a, b) => new Date(a.moveInDate).getTime() - new Date(b.moveInDate).getTime()
+      );
+    }
+    if (sortBy === "rent-asc") {
+      return [...matched].sort((a, b) => a.rentPerPerson - b.rentPerPerson);
+    }
+    if (sortBy === "rent-desc") {
+      return [...matched].sort((a, b) => b.rentPerPerson - a.rentPerPerson);
+    }
+
+    // Default: Multi-factor quality ranking heuristics
+    return rankRoommateRequests(matched, {
+      query: searchQuery,
+      selectedCity: selectedCity !== "All" ? selectedCity : undefined,
+      targetGender: selectedGender !== "all" ? selectedGender : undefined,
+      maxBudget,
+    });
   }, [
     initialRequests,
     selectedCity,
@@ -241,6 +271,7 @@ export function RoommateDiscoveryClient({
     maxBudget,
     selectedDiet,
     selectedSmoking,
+    sortBy,
   ]);
 
   const resetFilters = () => {
@@ -458,36 +489,63 @@ export function RoommateDiscoveryClient({
         )}
       </div>
 
+      {/* Results Header with Dynamic Count & Quality Sorting */}
+      <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="text-xs sm:text-sm text-zinc-500 font-medium">
+          Showing <span className="font-bold text-zinc-950">{filteredRequests.length}</span>{" "}
+          {filteredRequests.length === 1 ? "roommate post" : "roommate posts"}{" "}
+          {selectedCity !== "All" && (
+            <span>
+              in <span className="font-bold text-[#00412E]">{selectedCity}</span>
+            </span>
+          )}
+        </div>
+
+        <div className="w-full sm:w-60">
+          <CustomSelect
+            value={sortBy}
+            options={sortOptions}
+            onChange={(val) => setSortBy(val as any)}
+            icon={<ArrowUpDown className="h-3.5 w-3.5 text-zinc-400" />}
+            placeholder="Sort by"
+          />
+        </div>
+      </div>
+
       {/* Grid of Roommate Cards */}
       {filteredRequests.length > 0 ? (
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRequests.map((req) => (
             <RoommateCard key={req.id} {...req} currentUserId={currentUserId} />
           ))}
         </div>
       ) : (
-        <div className="mt-12 rounded-3xl border border-dashed border-zinc-200 p-12 text-center max-w-lg mx-auto bg-zinc-50/50">
+        <div className="mt-12 rounded-3xl border border-dashed border-[#E8EAE5] p-12 text-center max-w-lg mx-auto bg-zinc-50/50">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eff4ec] text-[#00412E] border border-[#96BF8A]/30 mb-4">
             <Users className="h-6 w-6 text-[#00412E]" />
           </div>
           <h3 className="text-base font-bold text-zinc-950">
-            No roommate posts match your criteria
+            {searchQuery.trim()
+              ? `No flatmates matching "${searchQuery}"`
+              : "No roommate posts match your criteria"}
           </h3>
           <p className="mt-1.5 text-xs text-zinc-500 leading-relaxed">
-            Try adjusting your location, budget, or lifestyle filters, or be the first to post your flatmate requirement!
+            {searchQuery.trim()
+              ? `No active requirements found for "${searchQuery}" in ${selectedCity}. Try expanding your search or clearing active filters.`
+              : "Try adjusting your location, budget, or lifestyle filters, or be the first to post your flatmate requirement!"}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             {hasActiveFilters && (
               <button
                 onClick={resetFilters}
-                className="rounded-xl border border-[#E8EAE5] bg-white px-4 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 cursor-pointer"
+                className="rounded-xl border border-[#E8EAE5] bg-white px-4 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 cursor-pointer shadow-2xs"
               >
                 Clear Filters
               </button>
             )}
             <Link
               href={currentUserId ? "/roommates/new" : "/login?returnUrl=/roommates/new"}
-              className="rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs"
+              className="rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-2xs"
             >
               Post Requirement
             </Link>
