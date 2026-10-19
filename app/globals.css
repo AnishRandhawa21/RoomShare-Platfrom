@@ -86,16 +86,276 @@ body {
   animation: gps-pulse 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
 }
 
-input[type="range"] {
-  accent-color: #00412E;
+@keyframes subtle-float-slow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
-input[type="range"]::-webkit-slider-thumb {
-  background-color: #00412E;
+@keyframes subtle-float-reverse {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(5px);
+  }
 }
 
-input[type="range"]::-moz-range-thumb {
-  background-color: #00412E;
+.animate-subtle-float {
+  animation: subtle-float-slow 6s ease-in-out infinite;
+}
+
+.animate-subtle-float-delayed {
+  animation: subtle-float-reverse 7s ease-in-out 1s infinite;
+}
+
+/* Luminous Text Glow Wave Animation (Clearly visible, continuous, smooth) */
+@keyframes text-glow-wave {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+.text-glow-wave {
+  background: linear-gradient(
+    115deg,
+    #00412E 0%,
+    #00412E 26%,
+    #669B5D 42%,
+    #96BF8A 50%,
+    #c4e7bc 53%,
+    #96BF8A 57%,
+    #00412E 74%,
+    #00412E 100%
+  );
+  background-size: 250% 100%;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: text-glow-wave 7s linear infinite;
+}
+
+.text-glow-wave-dark {
+  background: linear-gradient(
+    115deg,
+    #09090b 0%,
+    #09090b 26%,
+    #00412E 42%,
+    #96BF8A 50%,
+    #c4e7bc 53%,
+    #00412E 58%,
+    #09090b 74%,
+    #09090b 100%
+  );
+  background-size: 250% 100%;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: text-glow-wave 7s linear infinite;
+}
+
+/* Silky Aurora Angled Wave Mesh */
+@keyframes aurora-shift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(24px, -18px, 0) scale(1.05);
+    opacity: 1;
+  }
+}
+
+.aurora-wave-mesh {
+  background:
+    radial-gradient(ellipse 90% 60% at 15% -5%, rgba(150, 191, 138, 0.45) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 85% 95%, rgba(0, 65, 46, 0.2) 0%, transparent 65%),
+    linear-gradient(125deg, #edf6ea 0%, #e1f1dd 18%, #f8fbf7 35%, #d8edd3 52%, #f3f9f1 70%, #e4f3e0 86%, #dcf0d7 100%);
+}
+
+.aurora-shaft {
+  background: repeating-linear-gradient(
+    -32deg,
+    rgba(255, 255, 255, 0) 0px,
+    rgba(255, 255, 255, 0) 40px,
+    rgba(255, 255, 255, 0.3) 75px,
+    rgba(150, 191, 138, 0.35) 110px,
+    rgba(255, 255, 255, 0.65) 140px,
+    rgba(150, 191, 138, 0.3) 170px,
+    rgba(255, 255, 255, 0) 210px
+  );
+  animation: aurora-shift 14s ease-in-out infinite;
+}
+
+/* StayKro Ambient Background Animations - Clearly Visible & Smooth */
+@keyframes ambient-sweep-drift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(-32deg);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(36px, -32px, 0) rotate(-30deg);
+    opacity: 1;
+  }
+}
+
+@keyframes ambient-sweep-drift-reverse {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(-34deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate3d(-34px, 30px, 0) rotate(-36deg);
+    opacity: 1;
+  }
+}
+
+@keyframes ambient-glow-breathe {
+  0%, 100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes pattern-drift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-12px, 8px, 0);
+  }
+}
+
+.animate-sweep-drift {
+  animation: ambient-sweep-drift 14s ease-in-out infinite;
+}
+
+.animate-sweep-drift-reverse {
+  animation: ambient-sweep-drift-reverse 17s ease-in-out infinite;
+}
+
+.animate-glow-breathe {
+  animation: ambient-glow-breathe 10s ease-in-out infinite;
+}
+
+.animate-pattern-drift {
+  animation: pattern-drift 28s ease-in-out infinite;
+}
+
+/* ============================================================== */
+/* Ultra-Luxury Architectural Emerald, Sage & Nordic Pine Cycling */
+/* Harmonious, prestige botanical palette tailored for StayKro    */
+/* ============================================================== */
+
+@keyframes theme-cycle-primary {
+  0%, 100% {
+    background-color: rgba(0, 65, 46, 0.08); /* StayKro Deep Forest #00412E */
+  }
+  33% {
+    background-color: rgba(6, 61, 49, 0.08); /* High-End Nordic Pine #063D31 */
+  }
+  66% {
+    background-color: rgba(8, 55, 45, 0.075); /* Quiet Luxury Deep Forest Slate #08372D */
+  }
+}
+
+@keyframes theme-cycle-secondary {
+  0%, 100% {
+    background-color: rgba(150, 191, 138, 0.11); /* Soft Cashmere Sage #96BF8A */
+  }
+  33% {
+    background-color: rgba(124, 174, 143, 0.11); /* Mineral Sea-Glass #7CAE8F */
+  }
+  66% {
+    background-color: rgba(140, 179, 158, 0.10); /* Silken Juniper #8CB39E */
+  }
+}
+
+@keyframes theme-cycle-accent {
+  0%, 100% {
+    background-color: rgba(220, 235, 221, 0.14); /* Porcelain Mint #DCEBDD */
+  }
+  33% {
+    background-color: rgba(226, 236, 229, 0.14); /* Alpine Mineral Mist #E2ECE5 */
+  }
+  66% {
+    background-color: rgba(230, 239, 234, 0.14); /* Morning Dew Porcelain #E6EFEA */
+  }
+}
+
+@keyframes theme-cycle-ring-inner {
+  0%, 100% {
+    border-color: rgba(0, 65, 46, 0.07);
+  }
+  33% {
+    border-color: rgba(6, 61, 49, 0.07);
+  }
+  66% {
+    border-color: rgba(8, 55, 45, 0.07);
+  }
+}
+
+@keyframes theme-cycle-ring-outer {
+  0%, 100% {
+    border-color: rgba(150, 191, 138, 0.12);
+  }
+  33% {
+    border-color: rgba(124, 174, 143, 0.12);
+  }
+  66% {
+    border-color: rgba(140, 179, 158, 0.11);
+  }
+}
+
+.animate-glow-primary-compound {
+  animation: ambient-glow-breathe 10s ease-in-out infinite, theme-cycle-primary 24s ease-in-out infinite;
+}
+
+.animate-sweep-secondary-compound {
+  animation: ambient-sweep-drift-reverse 17s ease-in-out infinite, theme-cycle-secondary 24s ease-in-out infinite;
+}
+
+.animate-glow-accent-compound {
+  animation: ambient-glow-breathe 12s ease-in-out infinite, theme-cycle-accent 24s ease-in-out infinite;
+}
+
+.animate-ring-inner-compound {
+  animation: theme-cycle-ring-inner 24s ease-in-out infinite;
+}
+
+.animate-ring-outer-compound {
+  animation: theme-cycle-ring-outer 24s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-subtle-float,
+  .animate-subtle-float-delayed,
+  .text-glow-wave,
+  .text-glow-wave-dark,
+  .aurora-shaft,
+  .animate-sweep-drift,
+  .animate-sweep-drift-reverse,
+  .animate-glow-breathe,
+  .animate-pattern-drift,
+  .animate-glow-primary-compound,
+  .animate-sweep-secondary-compound,
+  .animate-glow-accent-compound,
+  .animate-ring-inner-compound,
+  .animate-ring-outer-compound,
+  .gps-pulse-circle {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 

@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   description: "Secure, direct messaging with matched roommates and hosts without broker fees.",
 };
 
+export const instant = false;
+
 async function InboxLoader() {
   const user = await getCurrentUser();
   if (!user) {

@@ -13,6 +13,8 @@ export const metadata: Metadata = {
     "Connect directly with working professionals and students looking for roommates and flatshares without paying broker commission.",
 };
 
+export const instant = false;
+
 interface RoommatesPageProps {
   searchParams?: Promise<{
     city?: string;

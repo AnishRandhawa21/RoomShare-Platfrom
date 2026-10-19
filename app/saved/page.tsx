@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   description: "View and manage your saved PG accommodations and flatmate requirements.",
 };
 
+export const instant = false;
+
 async function SavedDataLoader({ user }: { user: any }) {
   if (!user) {
     redirect("/login?returnUrl=/saved");

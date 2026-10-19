@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { getAuthSessionAction } from "@/actions/auth";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -12,7 +11,6 @@ import {
   Users,
   Search,
   MapPin,
-  ShieldCheck,
   CheckCircle2,
   ArrowRight,
   SlidersHorizontal,
@@ -22,7 +20,6 @@ import {
   Columns2,
   Map,
   Navigation,
-  Compass,
   Loader2,
   ArrowUpDown,
   RefreshCw,
@@ -353,14 +350,7 @@ export function CleanHomeClient({
   availableCities,
   currentUser: initialCurrentUser,
 }: CleanHomeClientProps) {
-  const router = useRouter();
   const [currentUser, setCurrentUser] = useState(initialCurrentUser);
-
-  useEffect(() => {
-    if (initialCurrentUser) {
-      setCurrentUser(initialCurrentUser);
-    }
-  }, [initialCurrentUser]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -596,17 +586,17 @@ export function CleanHomeClient({
       />
 
       <main className="flex-1">
-        {/* 2. Clean Minimal Hero (Spacious & Compact) */}
-        <section className="relative border-b border-[#E8EAE5] bg-gradient-to-b from-[#E8EAE5]/40 via-white to-white py-8 sm:py-12">
+        {/* 2. Clean Minimal Hero */}
+        <section className="relative border-b border-[#E8EAE5] bg-[#FAFAF8] py-10 sm:py-14">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
-            {/* StayKro Brand Badge with Logo */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#96BF8A]/50 bg-white/95 px-3.5 py-1.5 shadow-xs mb-4">
-              <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-md">
+            {/* StayKro Brand Badge */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#96BF8A]/40 bg-white px-3.5 py-1.5 shadow-xs mb-4">
+              <div className="relative h-5 w-5 shrink-0 overflow-hidden rounded-md">
                 <Image
                   src="/logo.png"
                   alt="StayKro Logo"
-                  width={24}
-                  height={24}
+                  width={20}
+                  height={20}
                   className="h-full w-full object-contain"
                   priority
                 />
@@ -621,13 +611,13 @@ export function CleanHomeClient({
               Verified PGs & Coliving in{" "}
               <span className="text-[#00412E]">{selectedCity}</span>
             </h1>
-            <p className="mt-2.5 text-xs sm:text-sm text-zinc-500 max-w-xl mx-auto leading-relaxed">
+            <p className="mt-2 text-xs sm:text-sm text-zinc-500 max-w-xl mx-auto leading-relaxed">
               Explore authentic direct-from-owner accommodations with real photos, verified room inventory, and transparent pricing.
             </p>
 
             {/* Clean Minimal Search Bar */}
             <div className="mt-6 max-w-3xl mx-auto">
-              <div className="rounded-2xl border border-[#E8EAE5] bg-white p-2.5 sm:p-3 shadow-lg shadow-[#00412E]/5">
+              <div className="rounded-2xl border border-[#E8EAE5] bg-white p-2.5 sm:p-3 shadow-sm">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
                   {/* Locality Input */}
                   <div className="sm:col-span-7 flex items-center rounded-xl bg-[#E8EAE5]/40 px-3.5 py-2.5 border border-[#E8EAE5] focus-within:border-[#00412E] focus-within:bg-white transition-all">

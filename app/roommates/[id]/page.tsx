@@ -12,6 +12,8 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+export const instant = false;
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const item = await getRoommateRequestById(id);

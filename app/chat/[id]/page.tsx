@@ -19,6 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+export const instant = false;
+
 async function ConversationLoader({
   params,
   userId,

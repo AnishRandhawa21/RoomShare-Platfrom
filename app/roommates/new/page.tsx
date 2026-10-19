@@ -18,6 +18,8 @@ export const metadata: Metadata = {
     "Post your roommate requirement for your PG or room type and connect with verified flatmates with zero brokerage.",
 };
 
+export const instant = false;
+
 interface NewRoommatePageProps {
   searchParams: Promise<{
     propertyId?: string;

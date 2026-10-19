@@ -169,15 +169,15 @@ export function InviteLandingCard({
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                href={`/login?returnUrl=/owner/invite/${token}`}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 shadow-md shadow-indigo-100"
+                href={`/login?invite=${token}&returnUrl=/owner/invite/${token}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-[#00412E] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#002d20] shadow-md shadow-[#00412E]/20 transition-all cursor-pointer"
               >
                 <span>Sign In with {invitation.email}</span>
-                <ArrowRight className="h-3.5 w-3.5" />
+                <ArrowRight className="h-3.5 w-3.5 text-[#96BF8A]" />
               </Link>
               <Link
-                href={`/signup?email=${encodeURIComponent(invitation.email)}&returnUrl=/owner/invite/${token}`}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-full border border-zinc-300 bg-white px-5 py-2.5 text-xs font-bold text-zinc-700 hover:bg-zinc-50"
+                href={`/signup?invite=${token}&email=${encodeURIComponent(invitation.email)}&returnUrl=/owner/invite/${token}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-2xl border border-[#E8EAE5] bg-white px-5 py-2.5 text-xs font-bold text-zinc-700 hover:bg-[#E8EAE5]/40 transition-all cursor-pointer"
               >
                 <span>Create New Account</span>
               </Link>
