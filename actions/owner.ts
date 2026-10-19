@@ -2037,3 +2037,73 @@ export async function getOwnerReviewsAction(options?: { propertyId?: string }) {
   }
 }
 
+export interface ReportOwnerReviewInput {
+  reviewId: string;
+  reason: "ABUSIVE_LANGUAGE" | "FALSE_REVIEW" | "HARASSMENT" | "SPAM" | "OTHER";
+  notes?: string;
+}
+
+/**
+ * Allows property owners to dispute or report abusive/fake reviews.
+ * The review is immediately quarantined (status set to PENDING) and logged to AuditLog for administrator review.
+ */
+export async function reportOwnerReviewAction(input: ReportOwnerReviewInput) {
+  try {
+    const { ownerProfile, user } = await requireOwnerContext();
+
+    const review = await prisma.review.findUnique({
+      where: { id: input.reviewId },
+      include: {
+        property: {
+          select: { id: true, ownerId: true, name: true, slug: true },
+        },
+      },
+    });
+
+    if (!review || review.property.ownerId !== ownerProfile.id) {
+      return { success: false, error: "Review not found or unauthorized access." };
+    }
+
+    // Quarantine the review by setting status to PENDING so it is removed from public view immediately
+    await prisma.review.update({
+      where: { id: input.reviewId },
+      data: { status: "PENDING" },
+    });
+
+    // Record formal administrative audit log for the trust & safety team
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "REVIEW_DISPUTED_BY_OWNER",
+        targetType: "REVIEW",
+        targetId: review.id,
+        details: {
+          reason: input.reason,
+          notes: input.notes?.trim() || null,
+          propertyId: review.propertyId,
+          propertyName: review.property.name,
+          reviewRating: review.rating,
+          reviewComment: review.comment,
+        },
+      },
+    });
+
+    revalidatePath(`/property/${review.property.slug}`);
+    revalidatePath(`/owner/properties/${review.propertyId}/reviews`);
+    revalidatePath("/owner/reviews");
+    revalidatePath("/admin/reviews");
+
+    return {
+      success: true,
+      message:
+        "The review has been reported and temporarily hidden from public view while our moderation team investigates.",
+    };
+  } catch (error: unknown) {
+    console.error("reportOwnerReviewAction error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to report review.",
+    };
+  }
+}
+

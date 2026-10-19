@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
+import { checkProfanityAndAbuse } from "@/lib/moderation";
 
 export interface SubmitReviewInput {
   propertyId: string;
@@ -62,6 +63,25 @@ export async function submitPropertyReviewAction(
 
   if (!comment || comment.trim().length < 5) {
     return { success: false, error: "Please write at least a short review (5+ characters)." };
+  }
+
+  // Automated pre-submission profanity, abuse, and spam filter
+  if (title) {
+    const titleCheck = checkProfanityAndAbuse(title);
+    if (!titleCheck.isClean) {
+      return {
+        success: false,
+        error: titleCheck.reason || "Review title contains prohibited or abusive language.",
+      };
+    }
+  }
+
+  const commentCheck = checkProfanityAndAbuse(comment);
+  if (!commentCheck.isClean) {
+    return {
+      success: false,
+      error: commentCheck.reason || "Review comment contains prohibited or abusive language.",
+    };
   }
 
   try {
