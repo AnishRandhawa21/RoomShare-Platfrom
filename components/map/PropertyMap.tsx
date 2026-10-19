@@ -19,6 +19,8 @@ import {
   Navigation,
   Compass,
   Loader2,
+  X,
+  ArrowRight,
 } from "lucide-react";
 import type { PropertyListingSummary } from "@/lib/discovery";
 import {
@@ -516,38 +518,45 @@ export function PropertyMap({
         </div>
       )}
 
-      {/* Interactive Property Preview Card Popup */}
+      {/* Interactive Property Preview Card Popup (Optimized for Split View & Mobile) */}
       {activePopupProperty && (
-        <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-20 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <div className="rounded-2xl border border-[#E8EAE5] bg-white p-3 shadow-xl backdrop-blur-md">
-            <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-zinc-100 mb-2.5">
+        <div className="absolute bottom-3 left-3 right-14 sm:bottom-4 sm:left-4 sm:right-auto sm:w-[360px] z-20 transition-all animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="group relative flex items-center gap-3 rounded-2xl border border-zinc-200/90 bg-white/95 p-2.5 shadow-xl backdrop-blur-md hover:shadow-2xl transition-all">
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setActivePopupProperty(null)}
+              className="absolute -top-2 -right-2 z-30 flex h-6 w-6 items-center justify-center rounded-full bg-white text-zinc-500 shadow-md border border-zinc-200 hover:bg-zinc-100 hover:text-zinc-950 transition-all cursor-pointer"
+              aria-label="Close preview"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+
+            {/* Thumbnail Image */}
+            <Link
+              href={`/property/${activePopupProperty.slug}`}
+              className="relative h-20 w-22 sm:h-22 sm:w-24 shrink-0 overflow-hidden rounded-xl bg-zinc-100 block group-hover:opacity-95 transition-opacity"
+            >
               {activePopupProperty.coverImageUrl ? (
                 <img
                   src={activePopupProperty.coverImageUrl}
                   alt={activePopupProperty.name}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-zinc-400">
                   <Building2 className="h-6 w-6" />
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => setActivePopupProperty(null)}
-                className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80 transition-colors cursor-pointer"
-                aria-label="Close preview"
-              >
-                ✕
-              </button>
-              <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
+              {/* Badge overlay on thumbnail */}
+              <div className="absolute bottom-1 left-1 flex items-center gap-1">
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-xs ${
+                  className={`rounded-md px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-white shadow-xs ${
                     activePopupProperty.genderPolicy === "BOYS"
-                      ? "bg-blue-600"
+                      ? "bg-blue-600/90"
                       : activePopupProperty.genderPolicy === "GIRLS"
-                      ? "bg-rose-600"
-                      : "bg-[#00412E]"
+                      ? "bg-rose-600/90"
+                      : "bg-[#00412E]/90"
                   }`}
                 >
                   {activePopupProperty.genderPolicy === "BOYS"
@@ -556,49 +565,51 @@ export function PropertyMap({
                     ? "Girls"
                     : "Coliving"}
                 </span>
-                {activePopupProperty.foodIncluded && (
-                  <span className="rounded-full bg-zinc-900/80 px-2 py-0.5 text-[9px] font-bold text-white">
-                    Meals
-                  </span>
-                )}
               </div>
-            </div>
+            </Link>
 
-            <div>
-              <div className="flex items-center justify-between gap-1 text-[11px] text-zinc-500 mb-0.5">
+            {/* Property Details */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mb-0.5">
                 <div className="flex items-center gap-1 truncate">
                   <MapPin className="h-3 w-3 text-zinc-400 shrink-0" />
-                  <span className="truncate">
-                    {activePopupProperty.locality}, {activePopupProperty.city}
+                  <span className="truncate font-medium">
+                    {activePopupProperty.locality}
                   </span>
                 </div>
                 {activePopupDistance && (
-                  <span className="shrink-0 flex items-center gap-1 font-bold text-[#00412E] bg-[#eff4ec] px-2 py-0.5 rounded-full text-[10px]">
-                    <Navigation className="h-2.5 w-2.5" /> {activePopupDistance}
+                  <span className="shrink-0 flex items-center gap-0.5 font-bold text-[#00412E] bg-[#eff4ec] px-1.5 py-0.5 rounded-full text-[9.5px]">
+                    <Navigation className="h-2 w-2" /> {activePopupDistance}
                   </span>
                 )}
               </div>
-              <h4 className="text-sm font-bold text-zinc-950 truncate">
-                {activePopupProperty.name}
-              </h4>
 
-              <div className="mt-2 flex items-center justify-between border-t border-[#E8EAE5] pt-2">
+              <Link
+                href={`/property/${activePopupProperty.slug}`}
+                className="block text-xs sm:text-sm font-bold text-zinc-950 truncate hover:text-[#00412E] transition-colors leading-snug"
+                title={activePopupProperty.name}
+              >
+                {activePopupProperty.name}
+              </Link>
+
+              {/* Price & View CTA */}
+              <div className="mt-1.5 flex items-center justify-between gap-2 pt-1 border-t border-zinc-100">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-zinc-400 block">
+                  <span className="text-[9px] uppercase font-bold text-zinc-400 block leading-none">
                     Starts at
                   </span>
-                  <span className="text-sm font-black text-[#00412E]">
+                  <span className="text-xs sm:text-sm font-black text-[#00412E]">
                     ₹{activePopupProperty.startingPrice.toLocaleString("en-IN")}
-                    <span className="text-[11px] font-semibold text-zinc-400">/mo</span>
+                    <span className="text-[10px] font-normal text-zinc-500">/mo</span>
                   </span>
                 </div>
 
                 <Link
                   href={`/property/${activePopupProperty.slug}`}
-                  className="inline-flex items-center gap-1 rounded-xl bg-[#00412E] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#002d20] transition-colors shadow-xs"
+                  className="inline-flex items-center gap-1 rounded-lg bg-[#00412E] px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-[#002d20] transition-colors shadow-2xs shrink-0"
                 >
-                  <span>View Details</span>
-                  <ExternalLink className="h-3 w-3" />
+                  <span>View</span>
+                  <ArrowRight className="h-3 w-3 text-[#96BF8A]" />
                 </Link>
               </div>
             </div>

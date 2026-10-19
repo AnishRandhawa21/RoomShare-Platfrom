@@ -294,8 +294,18 @@ export function CleanHomeClient({
 
   // Map & Discovery View Mode
   const [liveProperties, setLiveProperties] = useState<PropertyListingSummary[]>(initialProperties);
-  const [viewMode, setViewMode] = useState<"grid" | "split" | "map">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "split" | "map">("split");
   const [hoveredPropertyId, setHoveredPropertyId] = useState<string | null>(null);
+
+  // Split view smooth scroll to card when pin is clicked on map
+  useEffect(() => {
+    if (viewMode === "split" && hoveredPropertyId) {
+      const cardEl = document.getElementById(`split-card-${hoveredPropertyId}`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  }, [hoveredPropertyId, viewMode]);
 
   const handleBoundsChange = async (bounds: { north: number; south: number; east: number; west: number }) => {
     try {
@@ -872,13 +882,14 @@ export function CleanHomeClient({
                   <div className="lg:col-span-6 xl:col-span-7 space-y-4 max-h-[calc(100vh-10rem)] overflow-y-auto pr-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {filteredProperties.map((pg) => (
-                        <PropertyCard
-                          key={pg.id}
-                          pg={pg}
-                          isHovered={hoveredPropertyId === pg.id}
-                          onMouseEnter={() => setHoveredPropertyId(pg.id)}
-                          onMouseLeave={() => setHoveredPropertyId(null)}
-                        />
+                        <div key={pg.id} id={`split-card-${pg.id}`} className="transition-all">
+                          <PropertyCard
+                            pg={pg}
+                            isHovered={hoveredPropertyId === pg.id}
+                            onMouseEnter={() => setHoveredPropertyId(pg.id)}
+                            onMouseLeave={() => setHoveredPropertyId(null)}
+                          />
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -1125,7 +1136,7 @@ export function CleanHomeClient({
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 sm:hidden">
           <button
             type="button"
-            onClick={() => setViewMode(viewMode === "map" ? "grid" : "map")}
+            onClick={() => setViewMode(viewMode === "map" ? "split" : "map")}
             className="flex items-center gap-2 rounded-full bg-zinc-950 px-5 py-3 text-xs font-bold text-white shadow-2xl hover:bg-zinc-800 transition-all active:scale-95 border border-zinc-700 cursor-pointer"
           >
             {viewMode === "map" ? (
