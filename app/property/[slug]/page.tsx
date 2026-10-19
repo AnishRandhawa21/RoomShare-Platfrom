@@ -28,6 +28,10 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
         select: { url: true },
         take: 1,
       },
+      roomTypes: {
+        where: { isActive: true },
+        select: { monthlyRent: true, occupancy: true },
+      },
     },
   });
 
@@ -38,14 +42,9 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
     };
   }
 
-  const allActiveRoomTypes = await prisma.roomType.findMany({
-    where: { property: { slug }, isActive: true },
-    select: { monthlyRent: true, occupancy: true },
-  });
-
   let bestPerPerson = Infinity;
   let effectiveStartingPrice = property.startingPrice || 0;
-  for (const rt of allActiveRoomTypes) {
+  for (const rt of property.roomTypes) {
     const perPerson = rt.occupancy > 1 ? Math.round(rt.monthlyRent / rt.occupancy) : rt.monthlyRent;
     if (perPerson < bestPerPerson) {
       bestPerPerson = perPerson;

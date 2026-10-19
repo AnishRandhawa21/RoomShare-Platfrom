@@ -73,18 +73,27 @@ export function PropertyCard({
       {/* Image container */}
       <div className="relative aspect-video w-full bg-zinc-100 overflow-hidden">
         {allImages.length > 0 ? (
-          allImages.map((src, idx) => (
-            <img
-              key={src + idx}
-              src={src}
-              alt={`${pg.name} - photo ${idx + 1}`}
-              className={`absolute inset-0 h-full w-full object-cover transition-all duration-300 ease-in-out ${
-                idx === currentImageIndex
-                  ? "opacity-100 scale-100 z-0"
-                  : "opacity-0 scale-105 pointer-events-none z-0"
-              }`}
-            />
-          ))
+          allImages.map((src, idx) => {
+            // Performance: only render the active image or load secondary images when card is hovered
+            if (idx !== currentImageIndex && !isCardHovered) {
+              return null;
+            }
+            return (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                key={src + idx}
+                src={src}
+                alt={`${pg.name} - photo ${idx + 1}`}
+                loading={idx === 0 ? "lazy" : "eager"}
+                decoding="async"
+                className={`absolute inset-0 h-full w-full object-cover transition-all duration-300 ease-in-out ${
+                  idx === currentImageIndex
+                    ? "opacity-100 scale-100 z-0"
+                    : "opacity-0 scale-105 pointer-events-none z-0"
+                }`}
+              />
+            );
+          })
         ) : (
           <div className="h-full w-full flex items-center justify-center bg-zinc-100 text-zinc-400">
             <Building2 className="h-8 w-8 text-zinc-300" />

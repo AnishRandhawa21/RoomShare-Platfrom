@@ -22,6 +22,10 @@ export interface SearchSuggestionsResult {
 /**
  * Server action to provide fast, typo-tolerant search suggestions across localities, properties, and roommates.
  */
+// High-performance in-memory suggestion cache with 60s TTL
+const suggestionsCache = new Map<string, { timestamp: number; data: SearchSuggestionsResult }>();
+const CACHE_TTL_MS = 60 * 1000;
+
 export async function getSearchSuggestionsAction(
   rawQuery: string,
   selectedCity?: string
@@ -31,24 +35,78 @@ export async function getSearchSuggestionsAction(
     return { localities: [], properties: [], roommates: [], totalMatches: 0 };
   }
 
+  const cacheKey = `${(selectedCity || "ALL").toLowerCase()}:${query.toLowerCase()}`;
+  const cached = suggestionsCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   try {
     const cityFilter =
       selectedCity && selectedCity !== "All"
         ? { equals: selectedCity, mode: "insensitive" as const }
         : undefined;
 
-    // 1. Search Matching Localities
-    const localities = await prisma.locality.findMany({
-      where: {
-        name: { contains: query, mode: "insensitive" },
-        isActive: true,
-        ...(cityFilter ? { city: { name: cityFilter } } : {}),
-      },
-      include: {
-        city: { select: { name: true } },
-      },
-      take: 4,
-    });
+    // Run all 3 sub-queries concurrently with Promise.all for lowest latency
+    const [localities, properties, roommates] = await Promise.all([
+      // 1. Search Matching Localities
+      prisma.locality.findMany({
+        where: {
+          name: { contains: query, mode: "insensitive" },
+          isActive: true,
+          ...(cityFilter ? { city: { name: cityFilter } } : {}),
+        },
+        include: {
+          city: { select: { name: true } },
+        },
+        take: 4,
+      }),
+
+      // 2. Search Matching Properties
+      prisma.property.findMany({
+        where: {
+          status: "PUBLISHED",
+          deletedAt: null,
+          ...(cityFilter ? { city: cityFilter } : {}),
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { locality: { contains: query, mode: "insensitive" } },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          locality: true,
+          city: true,
+          startingPrice: true,
+          isVerified: true,
+        },
+        take: 5,
+      }),
+
+      // 3. Search Matching Roommate Requests
+      prisma.roommateRequest.findMany({
+        where: {
+          status: "ACTIVE",
+          ...(cityFilter ? { city: cityFilter } : {}),
+          OR: [
+            { title: { contains: query, mode: "insensitive" } },
+            { locality: { contains: query, mode: "insensitive" } },
+            { propertyName: { contains: query, mode: "insensitive" } },
+          ],
+        },
+        select: {
+          id: true,
+          title: true,
+          locality: true,
+          city: true,
+          rentPerPerson: true,
+          preferredGender: true,
+        },
+        take: 3,
+      }),
+    ]);
 
     const localityItems: SearchSuggestionItem[] = localities.map((loc) => ({
       type: "locality",
@@ -59,29 +117,6 @@ export async function getSearchSuggestionsAction(
       badge: "Locality",
     }));
 
-    // 2. Search Matching Properties
-    const properties = await prisma.property.findMany({
-      where: {
-        status: "PUBLISHED",
-        deletedAt: null,
-        ...(cityFilter ? { city: cityFilter } : {}),
-        OR: [
-          { name: { contains: query, mode: "insensitive" } },
-          { locality: { contains: query, mode: "insensitive" } },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        locality: true,
-        city: true,
-        startingPrice: true,
-        isVerified: true,
-      },
-      take: 5,
-    });
-
     const propertyItems: SearchSuggestionItem[] = properties.map((p) => ({
       type: "property",
       id: p.id,
@@ -91,28 +126,6 @@ export async function getSearchSuggestionsAction(
       price: p.startingPrice || undefined,
       badge: p.isVerified ? "Verified PG" : "PG",
     }));
-
-    // 3. Search Matching Roommate Requests
-    const roommates = await prisma.roommateRequest.findMany({
-      where: {
-        status: "ACTIVE",
-        ...(cityFilter ? { city: cityFilter } : {}),
-        OR: [
-          { title: { contains: query, mode: "insensitive" } },
-          { locality: { contains: query, mode: "insensitive" } },
-          { propertyName: { contains: query, mode: "insensitive" } },
-        ],
-      },
-      select: {
-        id: true,
-        title: true,
-        locality: true,
-        city: true,
-        rentPerPerson: true,
-        preferredGender: true,
-      },
-      take: 3,
-    });
 
     const roommateItems: SearchSuggestionItem[] = roommates.map((r) => ({
       type: "roommate",
@@ -127,12 +140,22 @@ export async function getSearchSuggestionsAction(
     const totalMatches =
       localityItems.length + propertyItems.length + roommateItems.length;
 
-    return {
+    const result: SearchSuggestionsResult = {
       localities: localityItems,
       properties: propertyItems,
       roommates: roommateItems,
       totalMatches,
     };
+
+    // Cache the result
+    suggestionsCache.set(cacheKey, { timestamp: Date.now(), data: result });
+    // Limit cache size to 500 entries
+    if (suggestionsCache.size > 500) {
+      const firstKey = suggestionsCache.keys().next().value;
+      if (firstKey) suggestionsCache.delete(firstKey);
+    }
+
+    return result;
   } catch (err) {
     console.error("Search suggestions error:", err);
     return { localities: [], properties: [], roommates: [], totalMatches: 0 };

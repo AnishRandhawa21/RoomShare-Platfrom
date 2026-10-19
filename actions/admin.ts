@@ -242,6 +242,8 @@ export interface GetAdminPropertiesParams {
   sort?: "newest" | "oldest" | "name";
 }
 
+let cachedAdminFilterCities: { timestamp: number; cities: string[] } | null = null;
+
 export async function getAdminPropertiesAction(params: GetAdminPropertiesParams) {
   try {
     await requireAdminContext();
@@ -285,7 +287,7 @@ export async function getAdminPropertiesAction(params: GetAdminPropertiesParams)
     else if (params.sort === "name") orderBy.name = "asc";
     else orderBy.createdAt = "desc";
 
-    const [total, properties, cities] = await Promise.all([
+    const [total, properties] = await Promise.all([
       prisma.property.count({ where }),
       prisma.property.findMany({
         where,
@@ -310,12 +312,19 @@ export async function getAdminPropertiesAction(params: GetAdminPropertiesParams)
           _count: { select: { roomTypes: true } },
         },
       }),
-      prisma.property.findMany({
+    ]);
+    let filterCities: string[] = [];
+    if (cachedAdminFilterCities && Date.now() - cachedAdminFilterCities.timestamp < 300000) {
+      filterCities = cachedAdminFilterCities.cities;
+    } else {
+      const distinctCities = await prisma.property.findMany({
         where: { deletedAt: null },
         distinct: ["city"],
         select: { city: true },
-      }),
-    ]);
+      });
+      filterCities = distinctCities.map((c) => c.city);
+      cachedAdminFilterCities = { timestamp: Date.now(), cities: filterCities };
+    }
 
     return {
       success: true,
@@ -324,7 +333,7 @@ export async function getAdminPropertiesAction(params: GetAdminPropertiesParams)
         total,
         page,
         totalPages: Math.ceil(total / limit),
-        filterCities: cities.map((c) => c.city),
+        filterCities,
       },
     };
   } catch (err: any) {

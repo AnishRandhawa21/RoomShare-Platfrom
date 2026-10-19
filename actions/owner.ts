@@ -844,7 +844,11 @@ export async function getOwnerDashboardMetricsAction() {
         images: { where: { isCover: true }, take: 1 },
         roomTypes: {
           where: { isActive: true },
-          include: { rooms: true },
+          include: {
+            rooms: {
+              select: { status: true, occupiedBeds: true },
+            },
+          },
         },
         enquiries: {
           where: { status: "NEW" },

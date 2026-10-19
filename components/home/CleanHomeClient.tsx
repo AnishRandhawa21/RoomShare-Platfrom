@@ -15,7 +15,6 @@ import {
   ArrowRight,
   SlidersHorizontal,
   X,
-  Utensils,
   LayoutGrid,
   Columns2,
   Map,
@@ -25,7 +24,6 @@ import {
   RefreshCw,
   ChevronDown,
   Check,
-  Star,
 } from "lucide-react";
 import type {
   PropertyListingSummary,
@@ -33,7 +31,6 @@ import type {
 } from "@/lib/discovery";
 import { rankProperties } from "@/lib/ranking";
 import { getSearchSuggestionsAction, type SearchSuggestionsResult } from "@/actions/search";
-import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { PropertyCard } from "@/components/property/PropertyCard";
 import { PropertyMap } from "@/components/map/PropertyMap";
 import { getPropertiesInBoundsAction } from "@/actions/map";
@@ -198,6 +195,7 @@ export function CleanHomeClient({
   const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const suggestionsCacheRef = useRef<Record<string, SearchSuggestionsResult>>({});
 
   // Close suggestions on outside click
   useEffect(() => {
@@ -210,9 +208,16 @@ export function CleanHomeClient({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Debounced search suggestions fetch
+  // Debounced search suggestions fetch with client-side caching
   useEffect(() => {
     if (!searchQuery || searchQuery.trim().length < 2) {
+      return;
+    }
+
+    const cacheKey = `${selectedCity}:${searchQuery.trim().toLowerCase()}`;
+    const cached = suggestionsCacheRef.current[cacheKey];
+    if (cached) {
+      setSuggestions(cached);
       return;
     }
 
@@ -220,13 +225,14 @@ export function CleanHomeClient({
       setIsSearchingSuggestions(true);
       try {
         const res = await getSearchSuggestionsAction(searchQuery, selectedCity);
+        suggestionsCacheRef.current[cacheKey] = res;
         setSuggestions(res);
       } catch (err) {
         console.error("Error fetching suggestions:", err);
       } finally {
         setIsSearchingSuggestions(false);
       }
-    }, 220);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [searchQuery, selectedCity]);
