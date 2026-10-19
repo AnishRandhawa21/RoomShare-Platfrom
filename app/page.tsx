@@ -6,6 +6,8 @@ import {
 import { getCurrentUser } from "@/lib/auth/session";
 import { CleanHomeClient } from "@/components/home/CleanHomeClient";
 
+export const dynamic = "force-dynamic";
+
 async function HomeContent() {
   const [properties, user, locationsData] = await Promise.all([
     getLiveProperties(),

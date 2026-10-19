@@ -9,7 +9,6 @@ export const metadata = {
   description: "PG and Coliving property management, room inventory, and resident enquiries.",
 };
 
-export const instant = false;
 
 export default async function OwnerLayout({ children }: { children: ReactNode }) {
   const headerList = await headers();

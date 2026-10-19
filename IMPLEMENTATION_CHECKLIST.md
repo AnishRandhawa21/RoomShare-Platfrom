@@ -376,7 +376,45 @@
 
 ---
 
-### Phase 24 & 25 — Testing & Production Deployment
-- [ ] Milestone 24: Comprehensive End-to-End Testing
+### Phase 24 — Comprehensive End-to-End Testing (Completed)
+- [x] **Automated E2E Test Suite (`scripts/test_e2e_comprehensive.ts`)**:
+  - [x] **Suite 1: Public Discovery & SEO Routes**:
+    - [x] Home page (`/`): returns HTTP 200 with brand metadata, hero search, and live listings
+    - [x] Roommate Discovery (`/roommates`): returns HTTP 200 with roommate seekers and filter pills
+    - [x] City Programmatic SEO (`/pg/jalandhar`, `/pg/phagwara`): returns HTTP 200 with JSON-LD schema & locality badges
+    - [x] Locality Programmatic SEO (`/pg/jalandhar/model-town`): returns HTTP 200 with FAQ accordions & breadcrumbs
+    - [x] Property Detail (`/property/[slug]`): returns HTTP 200 with interactive MapLibre map, room inventory, and reviews
+    - [x] Search Directives (`/robots.txt`): returns valid User-Agent rules and disallows on private surfaces
+    - [x] XML Sitemap (`/sitemap.xml`): returns valid dynamic XML sitemap indexing all published properties and localities
+  - [x] **Suite 2: Edge Middleware & Authentication Guards**:
+    - [x] Edge intercepts unauthenticated requests on `/admin`, `/admin/properties`, `/admin/owners` with 307 redirect to `/login`
+    - [x] Edge intercepts unauthenticated requests on `/owner`, `/owner/properties` with 307 redirect to `/login`
+    - [x] Edge intercepts unauthenticated requests on `/chat`, `/saved`, and `/profile` with 307 redirect to `/login`
+  - [x] **Suite 3: HTTP Security Headers**:
+    - [x] Verified `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin`, `Permissions-Policy`, and `Content-Security-Policy`
+  - [x] **Suite 4: Input Sanitization & XSS Defense**:
+    - [x] Strips malicious `<script>` tags, inline event handlers (`onerror`, `onload`), `<iframe>`, and escaped HTML entities safely
+    - [x] Enforces maximum string length constraints
+  - [x] **Suite 5: Rate Limiting & Anti-Abuse**:
+    - [x] Verified in-memory sliding window permits requests within quotas and rejects threshold breaches with positive `resetMs`
+    - [x] Tested auth, review, report, enquiry, and roommateInterest limiters
+  - [x] **Suite 6: Multi-Factor Ranking Engine**:
+    - [x] Composite score calculations verified across location, verification status, media, inventory, and reviews
+    - [x] Sorting verified for `price-asc`, `price-desc`, `rating`, and verified roommate requests
+  - [x] **Suite 7: Search Autocomplete Server Action**:
+    - [x] Verified fast suggestions across localities, properties, and roommate requests with city and name matching
+  - [x] **Suite 8: Server-Side Context Security Guards**:
+    - [x] Strict server-side verification: `requireAdminContext()` and `requireOwnerContext()` throw errors when called without proper session
+  - [x] **Suite 9: PostgreSQL Database Integrity**:
+    - [x] Verified relational integrity between Cities, Localities, Properties, Rooms, and Reviews
+    - [x] Verified published property data completeness and rating mathematics
+- [x] **Full Production Build Verification (`npm run build`)**:
+  - [x] Zero TypeScript errors (`npx tsc --noEmit` clean)
+  - [x] 43/43 routes statically generated and server-optimized with exit code 0
+  - [x] Cleaned up obsolete experimental route configs (`instant`, `cacheComponents`) for robust production compatibility
+
+---
+
+### Phase 25 — Production Deployment on Vercel
 - [ ] Milestone 25: Production Deployment on Vercel
 - [ ] Milestone 15, 16, 17: Monetization, Razorpay & Featured Boost (Deferred to last)

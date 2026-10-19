@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   description: "Production Administration Console for StayKro Platform.",
 };
 
-export const instant = false;
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   // 1. Strict Server-Side Admin Authentication Guard

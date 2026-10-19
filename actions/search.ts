@@ -52,9 +52,12 @@ export async function getSearchSuggestionsAction(
       // 1. Search Matching Localities
       prisma.locality.findMany({
         where: {
-          name: { contains: query, mode: "insensitive" },
           isActive: true,
           ...(cityFilter ? { city: { name: cityFilter } } : {}),
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { city: { name: { contains: query, mode: "insensitive" } } },
+          ],
         },
         include: {
           city: { select: { name: true } },
@@ -71,6 +74,7 @@ export async function getSearchSuggestionsAction(
           OR: [
             { name: { contains: query, mode: "insensitive" } },
             { locality: { contains: query, mode: "insensitive" } },
+            { city: { contains: query, mode: "insensitive" } },
           ],
         },
         select: {
@@ -94,6 +98,7 @@ export async function getSearchSuggestionsAction(
             { title: { contains: query, mode: "insensitive" } },
             { locality: { contains: query, mode: "insensitive" } },
             { propertyName: { contains: query, mode: "insensitive" } },
+            { city: { contains: query, mode: "insensitive" } },
           ],
         },
         select: {

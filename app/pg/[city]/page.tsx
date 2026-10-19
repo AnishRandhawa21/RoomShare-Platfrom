@@ -9,6 +9,8 @@ interface CityPageProps {
   params: Promise<{ city: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }: CityPageProps): Promise<Metadata> {
   const { city } = await params;
   const data = await getLocationLandingData(city);
