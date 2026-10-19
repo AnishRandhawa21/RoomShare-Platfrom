@@ -233,10 +233,10 @@ export function OwnerPropertiesList({
           >
             <div>
               {/* Header: Status, Gender Policy and Edit Info */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                       property.status === PropertyStatus.PUBLISHED
                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                         : "bg-amber-50 text-amber-700 border border-amber-200"
@@ -278,10 +278,10 @@ export function OwnerPropertiesList({
 
                 <Link
                   href={`/owner/properties/${property.id}/edit`}
-                  className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 text-xs font-bold transition-all shadow-2xs"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 px-3 py-1.5 text-xs font-semibold transition-all shadow-2xs shrink-0"
                   title="Edit name, price, location & rules"
                 >
-                  <Edit3 className="h-3 w-3" />
+                  <Edit3 className="h-3.5 w-3.5 text-zinc-500" />
                   <span>Edit</span>
                 </Link>
               </div>
@@ -342,31 +342,23 @@ export function OwnerPropertiesList({
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="mt-5 pt-3 border-t border-zinc-100 flex items-center gap-2">
-              <Link
-                href={`/owner/properties/${property.id}/edit`}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-2xs"
-                title="Edit property details, price & location"
-              >
-                <Edit3 className="h-3.5 w-3.5" />
-                <span>Edit</span>
-              </Link>
-
+            {/* Action Buttons: Clean balanced 3-column grid */}
+            <div className="mt-5 pt-3.5 border-t border-zinc-100 grid grid-cols-3 gap-2">
               <Link
                 href={`/owner/properties/${property.id}/reviews`}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-xs font-bold text-amber-800 hover:bg-amber-100 transition-colors shadow-2xs"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 py-2.5 text-xs font-bold transition-colors shadow-2xs"
                 title="View reviews & ratings for this property"
               >
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500 shrink-0" />
                 <span>Reviews</span>
               </Link>
 
               <Link
                 href={`/owner/properties/${property.id}/rooms`}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-zinc-900 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 transition-colors shadow-sm"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white py-2.5 text-xs font-bold transition-colors shadow-sm"
+                title="Manage room types, beds & vacancies"
               >
-                <BedDouble className="h-3.5 w-3.5" />
+                <BedDouble className="h-3.5 w-3.5 shrink-0" />
                 <span>Rooms</span>
               </Link>
 
@@ -374,8 +366,8 @@ export function OwnerPropertiesList({
                 type="button"
                 disabled={updatingId === property.id}
                 onClick={() => handleToggleStatus(property.id, property.status)}
-                className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer disabled:opacity-50"
-                title="Toggle Status"
+                className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 py-2.5 text-xs font-semibold text-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
+                title="Toggle Published / Draft Status"
               >
                 {property.status === PropertyStatus.PUBLISHED ? "Unpublish" : "Publish"}
               </button>
