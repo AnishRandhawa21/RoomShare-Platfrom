@@ -25,10 +25,10 @@
 - [x] **Milestone 18: Admin Portal (`/admin`) & Invite-Only Onboarding** (Completed)
 - [x] **Milestone 19: Reports, Reviews & Moderation Trail** (Completed)
 - [x] **Milestone 20: Search Quality & Ranking** (Completed)
+- [x] **Milestone 21: SEO Optimization & Dynamic Landing Pages** (Completed)
 - [ ] **Milestone 15: Subscription & Monetization System** (Deferred to last)
 - [ ] **Milestone 16: Razorpay Payment Integration** (Deferred to last)
 - [ ] **Milestone 17: Featured Listings Boost** (Deferred to last)
-- [ ] **Milestone 21: SEO Optimization & Dynamic Landing Pages**
 - [ ] **Milestone 22: Performance Tuning & Caching**
 - [ ] **Milestone 23: Security Hardening & Row Level Security (RLS)**
 - [ ] **Milestone 24: Comprehensive End-to-End Testing**
@@ -291,9 +291,34 @@
 
 ---
 
-### Phase 21, 22, 23, 24 & 25 — Production Readiness & Deployment
-- [ ] SEO: dynamic metadata, sitemaps, slug routes (`/pg/[city]/[locality]`)
-- [ ] Performance: lazy loading, image optimization, pagination
-- [ ] Supabase Row Level Security (RLS) policies deployed
-- [ ] End-to-end user & owner journey testing
-- [ ] Production deployment on Vercel
+### Phase 21 — SEO Optimization & Dynamic Landing Pages (Completed)
+- [x] Search Engine Directives (`app/robots.ts`):
+  - [x] Directives allowing public discovery surfaces (`/`, `/property/`, `/pg/`, `/roommates`)
+  - [x] Guarded disallows for private/authenticated sections (`/admin/`, `/owner/`, `/chat/`, `/saved/`, `/profile/`, `/api/`, `/auth/`)
+  - [x] Canonical link to dynamic sitemap (`https://staykro.com/sitemap.xml`)
+- [x] Dynamic XML Sitemap Generator (`app/sitemap.ts`):
+  - [x] Auto-discovers all published properties (`priority: 0.9`, weekly change frequency)
+  - [x] Auto-discovers all active cities and localities from database (`priority: 0.8`)
+  - [x] Static core routes indexing (`/`, `/roommates`, `/login`, `/signup`)
+- [x] Structured Data (Schema.org JSON-LD in `lib/seo.ts`):
+  - [x] `LodgingBusiness` schema with address, coordinates, priceRange, amenities, and aggregateRating
+  - [x] `BreadcrumbList` schema for search engine breadcrumb trails
+  - [x] `FAQPage` schema for rich snippet FAQs in Google search results
+  - [x] `ItemList` schema for programmatic category and locality listings
+- [x] Programmatic Dynamic Landing Pages:
+  - [x] City-level SEO landing pages (`app/pg/[city]/page.tsx`) with dynamic titles, descriptions, and OpenGraph/Twitter cards
+  - [x] Locality-level SEO landing pages (`app/pg/[city]/[locality]/page.tsx`) with landmark context, breadcrumb navigation, and filter pills
+  - [x] Shared responsive client view (`components/seo/LocationLandingClient.tsx`) with filter tabs (Boys, Girls, Coliving, With Meals), verified property cards, and expandable FAQ accordions
+- [x] Social Sharing & Canonical Metadata:
+  - [x] Fully localized `<title>`, `<meta description>`, OpenGraph cards, Twitter cards, and `<link rel="canonical">` tags on all property detail pages (`/property/[slug]`) and programmatic landing pages
+- [x] Internal Linking SEO Mesh (`components/layout/Footer.tsx`):
+  - [x] Upgraded footer with canonical links to top PG cities and popular locality searches
+
+---
+
+### Phase 22, 23, 24 & 25 — Performance, Security & Deployment
+- [ ] Milestone 22: Performance Tuning & Caching
+- [ ] Milestone 23: Security Hardening & Row Level Security (RLS)
+- [ ] Milestone 24: Comprehensive End-to-End Testing
+- [ ] Milestone 25: Production Deployment on Vercel
+- [ ] Milestone 15, 16, 17: Monetization, Razorpay & Featured Boost (Deferred to last)

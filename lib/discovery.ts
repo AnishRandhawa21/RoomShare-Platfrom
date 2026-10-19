@@ -55,6 +55,7 @@ export interface RoommateRequestSummary {
  */
 export async function getLiveProperties(params?: {
   city?: string;
+  locality?: string;
   searchQuery?: string;
   genderPolicy?: string;
   availabilityFilter?: "all" | "available" | "roommate";
@@ -68,6 +69,10 @@ export async function getLiveProperties(params?: {
 
     if (params?.city && params.city !== "All") {
       whereClause.city = { equals: params.city, mode: "insensitive" };
+    }
+
+    if (params?.locality && params.locality !== "All") {
+      whereClause.locality = { contains: params.locality, mode: "insensitive" };
     }
 
     if (params?.searchQuery && params.searchQuery.trim().length > 0) {

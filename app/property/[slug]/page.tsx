@@ -4,6 +4,7 @@ import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { PropertyDetailClient } from "@/components/property/PropertyDetailClient";
+import { APP_BASE_URL, toSlug, generatePropertyJsonLd, generateBreadcrumbJsonLd } from "@/lib/seo";
 
 interface PropertyPageProps {
   params: Promise<{ slug: string }>;
@@ -59,14 +60,27 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
   const description =
     property.description ||
     `Verified PG & coliving stay in ${property.locality}, ${property.city} with zero brokerage. Direct owner contact and furnished rooms.`;
+  const canonicalUrl = `${APP_BASE_URL}/property/${slug}`;
+  const ogImage = property.images[0]?.url ? [property.images[0].url] : [];
 
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
-      images: property.images[0]?.url ? [{ url: property.images[0].url }] : [],
+      url: canonicalUrl,
+      images: ogImage,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ogImage,
     },
   };
 }
@@ -251,11 +265,51 @@ async function PropertyDataLoader({ params }: PropertyPageProps) {
       }
     : null;
 
+  const reviewCount = property.reviews.length;
+  const averageRating = reviewCount > 0
+    ? Math.round((property.reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount) * 10) / 10
+    : null;
+
+  const breadcrumbs = [
+    { name: "Home", path: "/" },
+    { name: property.city, path: `/pg/${toSlug(property.city)}` },
+    { name: property.locality, path: `/pg/${toSlug(property.city)}/${toSlug(property.locality)}` },
+    { name: property.name, path: `/property/${property.slug}` },
+  ];
+  const breadcrumbJsonLd = generateBreadcrumbJsonLd(breadcrumbs);
+  const propertyJsonLd = generatePropertyJsonLd({
+    name: property.name,
+    description: property.description,
+    slug: property.slug,
+    addressLine1: property.addressLine1,
+    locality: property.locality,
+    city: property.city,
+    state: property.state,
+    postalCode: property.postalCode,
+    latitude: property.latitude,
+    longitude: property.longitude,
+    startingPrice,
+    images: property.images.map((img) => ({ url: img.url })),
+    amenities: property.amenities.map((a) => ({ name: a.amenity.name })),
+    averageRating,
+    reviewCount,
+  });
+
   return (
-    <PropertyDetailClient
-      property={serializedProperty}
-      currentUser={serializedUser}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(propertyJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <PropertyDetailClient
+        property={serializedProperty}
+        currentUser={serializedUser}
+      />
+    </>
   );
 }
 
