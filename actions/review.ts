@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { checkProfanityAndAbuse } from "@/lib/moderation";
+import { rateLimiters } from "@/lib/rate-limit";
+import { sanitizeText } from "@/lib/sanitize";
 
 export interface SubmitReviewInput {
   propertyId: string;
@@ -51,7 +53,18 @@ export async function submitPropertyReviewAction(
     };
   }
 
-  const { propertyId, rating, title, comment, cleanliness, foodQuality, safety } = input;
+  // Rate Limiting (5 reviews per hour)
+  const rateLimit = rateLimiters.review(user.id);
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error: "You have submitted multiple reviews recently. Please wait a while before posting again.",
+    };
+  }
+
+  const { propertyId, rating, cleanliness, foodQuality, safety } = input;
+  const title = input.title ? sanitizeText(input.title, 120) : undefined;
+  const comment = sanitizeText(input.comment, 1500);
 
   if (!propertyId) {
     return { success: false, error: "Property ID is required." };

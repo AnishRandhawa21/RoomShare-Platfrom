@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
+import { checkRateLimit, rateLimiters } from "@/lib/rate-limit";
+import { sanitizeText } from "@/lib/sanitize";
 import {
   GenderPolicy,
   DietaryPreference,
@@ -66,7 +68,14 @@ export async function createRoommateRequestAction(
     return { success: false, error: "Please sign in to post a roommate requirement." };
   }
 
-  if (!input.description || input.description.trim().length < 10) {
+  // Rate Limiting (max 10 requests per day per user)
+  const rateLimit = checkRateLimit(`roommate_create:${user.id}`, 10, 86400000);
+  if (!rateLimit.success) {
+    return { success: false, error: "You have reached the maximum roommate post limit for today." };
+  }
+
+  const cleanDescription = sanitizeText(input.description || "", 2000);
+  if (cleanDescription.length < 10) {
     return {
       success: false,
       error: "Please provide a brief 'About you' description (at least 10 characters).",
@@ -285,6 +294,17 @@ export async function applyRoommateInterestAction({
     return { success: false, error: "Please sign in to connect with this flatmate." };
   }
 
+  // Rate Limiting (max 10 roommate interest applications per hour per user)
+  const rateLimit = rateLimiters.roommateInterest(user.id);
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error: "You have submitted multiple applications recently. Please wait a while before sending more.",
+    };
+  }
+
+  const cleanIntro = introMessage ? sanitizeText(introMessage, 1000) : null;
+
   const request = await prisma.roommateRequest.findUnique({
     where: { id: requestId },
     select: { id: true, creatorId: true, status: true },
@@ -329,7 +349,7 @@ export async function applyRoommateInterestAction({
       data: {
         requestId,
         applicantId: user.id,
-        introMessage: introMessage?.trim() || null,
+        introMessage: cleanIntro,
         status: RoommateInterestStatus.PENDING,
       },
     });

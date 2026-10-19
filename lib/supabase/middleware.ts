@@ -51,6 +51,7 @@ export async function updateSession(request: NextRequest) {
 
   // Protected paths that require authentication
   const protectedPrefixes = [
+    "/admin",
     "/profile",
     "/saved",
     "/chat",

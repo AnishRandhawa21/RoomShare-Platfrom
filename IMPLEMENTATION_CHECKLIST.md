@@ -27,10 +27,10 @@
 - [x] **Milestone 20: Search Quality & Ranking** (Completed)
 - [x] **Milestone 21: SEO Optimization & Dynamic Landing Pages** (Completed)
 - [x] **Milestone 22: Performance Tuning & Caching** (Completed)
+- [x] **Milestone 23: Security Hardening & Row Level Security (RLS)** (Completed)
 - [ ] **Milestone 15: Subscription & Monetization System** (Deferred to last)
 - [ ] **Milestone 16: Razorpay Payment Integration** (Deferred to last)
 - [ ] **Milestone 17: Featured Listings Boost** (Deferred to last)
-- [ ] **Milestone 23: Security Hardening & Row Level Security (RLS)**
 - [ ] **Milestone 24: Comprehensive End-to-End Testing**
 - [ ] **Milestone 25: Production Deployment on Vercel**
 
@@ -344,8 +344,39 @@
 
 ---
 
-### Phase 23, 24 & 25 — Security, Testing & Production Deployment
-- [ ] Milestone 23: Security Hardening & Row Level Security (RLS)
+### Phase 23 — Security Hardening & Row Level Security (RLS) (Completed)
+- [x] **Supabase PostgreSQL Row Level Security (RLS) (`scripts/setup_rls.sql`)**:
+  - [x] Multi-tenant isolation helper functions (`get_current_user_id()`, `is_admin()`, `is_property_owner()`)
+  - [x] RLS enabled and verified on all production tables: `User`, `Profile`, `OwnerProfile`, `OwnerInvitation`, `Property`, `PropertyImage`, `RoomType`, `Room`, `Amenity`, `PropertyAmenity`, `RoommateRequest`, `RoommateInterest`, `Conversation`, `ConversationParticipant`, `Message`, `SavedProperty`, `SavedRoommateRequest`, `Review`, `Report`, `AuditLog`, `PGEnquiry`, `City`, `Locality`
+  - [x] Public read restricted to `PUBLISHED` properties, `ACTIVE` roommate requests, and `APPROVED` reviews
+  - [x] Private chat messages and conversations restricted strictly to active conversation participants or admin
+  - [x] Saved properties and roommate requests isolated to the authenticated user
+  - [x] Reports and audit logs locked down to system service role and administrators
+- [x] **HTTP Security Headers & Content Security Policy (`next.config.ts`)**:
+  - [x] `X-Frame-Options: DENY` (clickjacking defense)
+  - [x] `X-Content-Type-Options: nosniff` (MIME sniffing prevention)
+  - [x] `Referrer-Policy: strict-origin-when-cross-origin`
+  - [x] `Permissions-Policy: camera=(), microphone=(), geolocation=(self)`
+  - [x] `X-XSS-Protection: 1; mode=block`
+  - [x] `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (HSTS)
+  - [x] Content Security Policy (CSP) allowing Next.js hydration, Google fonts, MapLibre GL Web Workers, Cloudflare R2 images, and Supabase WebSockets
+- [x] **Anti-Brute-Force & Abuse Rate Limiting (`lib/rate-limit.ts`)**:
+  - [x] In-memory sliding window rate limiter with auto-cleanup
+  - [x] Auth protection: max 5 login/signup attempts per 15 minutes per identifier
+  - [x] Review submission protection: max 5 reviews per hour per user
+  - [x] Owner enquiry protection: max 10 enquiries per hour per phone
+  - [x] Roommate post creation: max 10 posts per day
+  - [x] Roommate interest applications: max 10 applications per hour
+  - [x] In-platform chat flooding defense: max 30 messages per minute
+- [x] **Input Sanitization & XSS Defense (`lib/sanitize.ts`)**:
+  - [x] Strips malicious `<script>`, `<iframe>`, `<object>`, inline event handlers (`onload`, `onerror`), and `javascript:` URIs
+  - [x] Applied across review comments, enquiry messages, chat messages, and roommate descriptions
+- [x] **Edge Middleware Protection (`lib/supabase/middleware.ts`)**:
+  - [x] Added `/admin` to edge middleware protected prefixes to intercept unauthenticated requests at the network edge before SSR
+
+---
+
+### Phase 24 & 25 — Testing & Production Deployment
 - [ ] Milestone 24: Comprehensive End-to-End Testing
 - [ ] Milestone 25: Production Deployment on Vercel
 - [ ] Milestone 15, 16, 17: Monetization, Razorpay & Featured Boost (Deferred to last)

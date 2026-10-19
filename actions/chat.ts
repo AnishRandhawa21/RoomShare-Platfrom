@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { sanitizeText } from "@/lib/sanitize";
 
 export interface ChatActionResult<T = unknown> {
   success: boolean;
@@ -356,21 +358,30 @@ export async function sendMessageAction({
       return { success: false, error: "Unauthorized." };
     }
 
-    const trimmed = content.trim();
+    // Rate Limiting (max 30 messages per minute per user to stop flooding)
+    const rateLimit = checkRateLimit(`chat:${user.id}`, 30, 60000);
+    if (!rateLimit.success) {
+      return { success: false, error: "You are sending messages too quickly. Please pause for a moment." };
+    }
+
+    const sanitized = sanitizeText(content, 2000);
+    if (!sanitized) {
+      return { success: false, error: "Message cannot be empty." };
+    }
 
     const [message] = await prisma.$transaction([
       prisma.message.create({
         data: {
           conversationId,
           senderId: user.id,
-          content: trimmed,
+          content: sanitized,
           messageType: "TEXT",
         },
       }),
       prisma.conversation.update({
         where: { id: conversationId },
         data: {
-          lastMessageText: trimmed,
+          lastMessageText: sanitized,
           lastMessageAt: new Date(),
         },
       }),

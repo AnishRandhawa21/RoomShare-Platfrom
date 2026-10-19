@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { rateLimiters } from "@/lib/rate-limit";
+import { sanitizeText } from "@/lib/sanitize";
 
 export type AuthActionResult = {
   success: boolean;
@@ -23,15 +25,26 @@ export async function signUpAction(
   const email = formData.get("email")?.toString().trim();
   const password = formData.get("password")?.toString();
   const confirmPassword = formData.get("confirmPassword")?.toString();
-  const fullName = formData.get("fullName")?.toString().trim();
+  const rawFullName = formData.get("fullName")?.toString().trim();
   const rawPhone = formData.get("phone")?.toString().trim();
   const inviteToken = formData.get("inviteToken")?.toString().trim();
   const returnUrl = formData.get("returnUrl")?.toString() || (inviteToken ? `/owner/invite/${inviteToken}` : "/");
   const phone = rawPhone && rawPhone.length > 0 ? rawPhone : undefined;
 
-  if (!email || !password || !fullName) {
+  if (!email || !password || !rawFullName) {
     return { success: false, error: "Please provide your full name, email, and password." };
   }
+
+  // Rate Limiting (5 signup/auth attempts per 15 mins)
+  const rateLimit = rateLimiters.auth(email);
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error: "Too many sign-up attempts from this connection. Please wait 15 minutes before trying again.",
+    };
+  }
+
+  const fullName = sanitizeText(rawFullName, 80);
 
   if (password.length < 6) {
     return { success: false, error: "Password must be at least 6 characters long." };
@@ -138,6 +151,15 @@ export async function loginAction(
 
   if (!identifier || !password) {
     return { success: false, error: "Please enter your email/phone and password." };
+  }
+
+  // Rate Limiting (5 login attempts per 15 minutes per identifier to prevent brute forcing)
+  const rateLimit = rateLimiters.auth(identifier);
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error: "Too many failed login attempts. For security reasons, please wait 15 minutes before trying again.",
+    };
   }
 
   let resolvedEmail = identifier;
