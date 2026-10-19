@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Settings,
   ArrowLeft,
+  Star,
 } from "lucide-react";
 
 interface PropertySubNavProps {
@@ -56,6 +57,11 @@ export function PropertySubNav({
       name: "Amenities",
       href: `/owner/properties/${propertyId}/amenities`,
       icon: CheckSquare,
+    },
+    {
+      name: "Reviews & Ratings",
+      href: `/owner/properties/${propertyId}/reviews`,
+      icon: Star,
     },
     {
       name: "Enquiries",

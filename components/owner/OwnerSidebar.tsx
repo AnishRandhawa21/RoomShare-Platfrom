@@ -15,10 +15,10 @@ import {
   User,
   Settings,
   ExternalLink,
-  ChevronRight,
   X,
   Mail,
   Home,
+  Star,
 } from "lucide-react";
 
 interface OwnerSidebarProps {
@@ -89,6 +89,11 @@ export function OwnerSidebar({
     {
       title: "COMMUNICATION",
       items: [
+        {
+          name: "Reviews & Ratings",
+          href: "/owner/reviews",
+          icon: Star,
+        },
         {
           name: "PG Enquiries",
           href: "/owner/enquiries",

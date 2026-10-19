@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma, Role, PropertyStatus, RoomOperationalStatus, GenderPolicy, FoodOffering, PropertyType } from "@/lib/prisma";
-import { EnquiryStatus, RoommateRequestStatus, PaymentStatus } from "@/lib/enums";
+import { EnquiryStatus, RoommateRequestStatus } from "@/lib/enums";
 import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 
@@ -326,6 +326,10 @@ export async function getOwnerPropertiesAction() {
             amenity: true,
           },
         },
+        reviews: {
+          where: { status: "APPROVED" },
+          select: { rating: true },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -352,6 +356,14 @@ export async function getOwnerPropertiesAction() {
           ? Math.round((totalOccupiedBeds / totalNominalCapacity) * 100)
           : 0;
 
+      const reviewCount = prop.reviews?.length || 0;
+      const averageRating =
+        reviewCount > 0
+          ? Math.round(
+              (prop.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount) * 10
+            ) / 10
+          : null;
+
       return {
         ...prop,
         totalRooms,
@@ -359,6 +371,8 @@ export async function getOwnerPropertiesAction() {
         totalOccupiedBeds,
         totalVacantBeds,
         occupancyRate,
+        averageRating,
+        reviewCount,
       };
     });
 
@@ -840,6 +854,10 @@ export async function getOwnerDashboardMetricsAction() {
           where: { status: "ACTIVE" },
           select: { id: true },
         },
+        reviews: {
+          where: { status: "APPROVED" },
+          select: { rating: true },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -848,6 +866,8 @@ export async function getOwnerDashboardMetricsAction() {
     let totalOccupiedBeds = 0;
     let pendingEnquiriesCount = 0;
     let activeRoommateRequestsCount = 0;
+    let totalAllReviews = 0;
+    let sumAllRatings = 0;
 
     const propertySummaries = properties.map((p) => {
       let propTotalBeds = 0;
@@ -867,6 +887,18 @@ export async function getOwnerDashboardMetricsAction() {
       pendingEnquiriesCount += p.enquiries.length;
       activeRoommateRequestsCount += p.roommateRequests.length;
 
+      const propReviews = p.reviews || [];
+      const reviewCount = propReviews.length;
+      const averageRating =
+        reviewCount > 0
+          ? Math.round(
+              (propReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount) * 10
+            ) / 10
+          : null;
+
+      totalAllReviews += reviewCount;
+      sumAllRatings += propReviews.reduce((sum, r) => sum + r.rating, 0);
+
       return {
         id: p.id,
         name: p.name,
@@ -880,20 +912,45 @@ export async function getOwnerDashboardMetricsAction() {
         availableBeds: Math.max(0, propTotalBeds - propOccupiedBeds),
         pendingEnquiriesCount: p.enquiries.length,
         activeRoommatesCount: p.roommateRequests.length,
+        averageRating,
+        reviewCount,
       };
     });
 
-    const recentEnquiries = await prisma.pGEnquiry.findMany({
-      where: {
-        property: { ownerId: ownerProfile.id, deletedAt: null },
-      },
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: {
-        property: { select: { id: true, name: true, slug: true } },
-        roomType: { select: { id: true, name: true } },
-      },
-    });
+    const portfolioAverageRating =
+      totalAllReviews > 0 ? Math.round((sumAllRatings / totalAllReviews) * 10) / 10 : null;
+
+    const [recentEnquiries, recentReviews] = await Promise.all([
+      prisma.pGEnquiry.findMany({
+        where: {
+          property: { ownerId: ownerProfile.id, deletedAt: null },
+        },
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          property: { select: { id: true, name: true, slug: true } },
+          roomType: { select: { id: true, name: true } },
+        },
+      }),
+      prisma.review.findMany({
+        where: {
+          property: { ownerId: ownerProfile.id, deletedAt: null },
+          status: "APPROVED",
+        },
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          property: { select: { id: true, name: true, slug: true } },
+          user: {
+            include: {
+              profile: {
+                select: { fullName: true, avatarUrl: true },
+              },
+            },
+          },
+        },
+      }),
+    ]);
 
     return {
       success: true,
@@ -905,8 +962,23 @@ export async function getOwnerDashboardMetricsAction() {
         availableBeds: Math.max(0, totalNominalCapacity - totalOccupiedBeds),
         pendingEnquiriesCount,
         activeRoommateRequestsCount,
+        averageRating: portfolioAverageRating,
+        totalReviews: totalAllReviews,
         properties: propertySummaries,
         recentEnquiries,
+        recentReviews: recentReviews.map((r) => ({
+          id: r.id,
+          rating: r.rating,
+          title: r.title,
+          comment: r.comment,
+          cleanliness: r.cleanliness,
+          foodQuality: r.foodQuality,
+          safety: r.safety,
+          createdAt: r.createdAt.toISOString(),
+          property: r.property,
+          userName: r.user.profile?.fullName || "Verified Resident",
+          userAvatar: r.user.profile?.avatarUrl || null,
+        })),
       },
     };
   } catch (error: unknown) {
@@ -1379,10 +1451,22 @@ export async function getOwnerPropertyDetailAction(propertyId: string) {
           orderBy: { monthlyRent: "asc" },
         },
         amenities: { include: { amenity: true } },
+        reviews: {
+          where: { status: "APPROVED" },
+          orderBy: { createdAt: "desc" },
+          include: {
+            user: {
+              include: {
+                profile: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             enquiries: true,
             roommateRequests: true,
+            reviews: { where: { status: "APPROVED" } },
           },
         },
       },
@@ -1392,7 +1476,74 @@ export async function getOwnerPropertyDetailAction(propertyId: string) {
       return { success: false, error: "Property not found or unauthorized access." };
     }
 
-    return { success: true, property };
+    const reviews = property.reviews || [];
+    const reviewCount = reviews.length;
+    const averageRating =
+      reviewCount > 0
+        ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount) * 10) / 10
+        : null;
+
+    const cleanlinessScores = reviews
+      .map((r) => r.cleanliness)
+      .filter((s): s is number => typeof s === "number");
+    const safetyScores = reviews
+      .map((r) => r.safety)
+      .filter((s): s is number => typeof s === "number");
+    const foodScores = reviews
+      .map((r) => r.foodQuality)
+      .filter((s): s is number => typeof s === "number");
+
+    const avgCleanliness =
+      cleanlinessScores.length > 0
+        ? Math.round(
+            (cleanlinessScores.reduce((a, b) => a + b, 0) / cleanlinessScores.length) * 10
+          ) / 10
+        : null;
+    const avgSafety =
+      safetyScores.length > 0
+        ? Math.round((safetyScores.reduce((a, b) => a + b, 0) / safetyScores.length) * 10) / 10
+        : null;
+    const avgFood =
+      foodScores.length > 0
+        ? Math.round((foodScores.reduce((a, b) => a + b, 0) / foodScores.length) * 10) / 10
+        : null;
+
+    const ratingDistribution = {
+      5: reviews.filter((r) => r.rating === 5).length,
+      4: reviews.filter((r) => r.rating === 4).length,
+      3: reviews.filter((r) => r.rating === 3).length,
+      2: reviews.filter((r) => r.rating === 2).length,
+      1: reviews.filter((r) => r.rating === 1).length,
+    };
+
+    const serializedReviews = reviews.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      title: r.title,
+      comment: r.comment,
+      cleanliness: r.cleanliness,
+      foodQuality: r.foodQuality,
+      safety: r.safety,
+      createdAt: r.createdAt.toISOString(),
+      user: {
+        fullName: r.user.profile?.fullName || "Verified Resident",
+        avatarUrl: r.user.profile?.avatarUrl || null,
+      },
+    }));
+
+    return {
+      success: true,
+      property: {
+        ...property,
+        averageRating,
+        reviewCount,
+        avgCleanliness,
+        avgSafety,
+        avgFood,
+        ratingDistribution,
+        reviews: serializedReviews,
+      },
+    };
   } catch (error: unknown) {
     console.error("getOwnerPropertyDetailAction error:", error);
     return { success: false, error: "Failed to load property details." };
@@ -1761,6 +1912,128 @@ export async function updateOwnerPropertyAmenitiesAction(
   } catch (error: unknown) {
     console.error("updateOwnerPropertyAmenitiesAction error:", error);
     return { success: false, error: "Failed to update amenities." };
+  }
+}
+
+/**
+ * Returns all reviews and ratings across all owner properties or for a specific property,
+ * along with score breakdown and distribution metrics.
+ */
+export async function getOwnerReviewsAction(options?: { propertyId?: string }) {
+  try {
+    const { ownerProfile } = await requireOwnerContext();
+
+    const whereClause: any = {
+      property: {
+        ownerId: ownerProfile.id,
+        deletedAt: null,
+      },
+      status: "APPROVED",
+    };
+
+    if (options?.propertyId) {
+      whereClause.propertyId = options.propertyId;
+    }
+
+    const [reviews, properties] = await Promise.all([
+      prisma.review.findMany({
+        where: whereClause,
+        orderBy: { createdAt: "desc" },
+        include: {
+          property: {
+            select: { id: true, name: true, slug: true, locality: true, city: true },
+          },
+          user: {
+            include: {
+              profile: {
+                select: { fullName: true, avatarUrl: true },
+              },
+            },
+          },
+        },
+      }),
+      prisma.property.findMany({
+        where: { ownerId: ownerProfile.id, deletedAt: null },
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+
+    const totalReviews = reviews.length;
+    const averageRating =
+      totalReviews > 0
+        ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 10) / 10
+        : null;
+
+    const cleanlinessScores = reviews
+      .map((r) => r.cleanliness)
+      .filter((s): s is number => typeof s === "number");
+    const safetyScores = reviews
+      .map((r) => r.safety)
+      .filter((s): s is number => typeof s === "number");
+    const foodScores = reviews
+      .map((r) => r.foodQuality)
+      .filter((s): s is number => typeof s === "number");
+
+    const avgCleanliness =
+      cleanlinessScores.length > 0
+        ? Math.round(
+            (cleanlinessScores.reduce((a, b) => a + b, 0) / cleanlinessScores.length) * 10
+          ) / 10
+        : null;
+    const avgSafety =
+      safetyScores.length > 0
+        ? Math.round((safetyScores.reduce((a, b) => a + b, 0) / safetyScores.length) * 10) / 10
+        : null;
+    const avgFood =
+      foodScores.length > 0
+        ? Math.round((foodScores.reduce((a, b) => a + b, 0) / foodScores.length) * 10) / 10
+        : null;
+
+    const ratingDistribution = {
+      5: reviews.filter((r) => r.rating === 5).length,
+      4: reviews.filter((r) => r.rating === 4).length,
+      3: reviews.filter((r) => r.rating === 3).length,
+      2: reviews.filter((r) => r.rating === 2).length,
+      1: reviews.filter((r) => r.rating === 1).length,
+    };
+
+    return {
+      success: true,
+      data: {
+        reviews: reviews.map((r) => ({
+          id: r.id,
+          propertyId: r.propertyId,
+          rating: r.rating,
+          title: r.title,
+          comment: r.comment,
+          cleanliness: r.cleanliness,
+          foodQuality: r.foodQuality,
+          safety: r.safety,
+          createdAt: r.createdAt.toISOString(),
+          property: r.property,
+          user: {
+            fullName: r.user.profile?.fullName || "Verified Resident",
+            avatarUrl: r.user.profile?.avatarUrl || null,
+          },
+        })),
+        stats: {
+          totalReviews,
+          averageRating,
+          avgCleanliness,
+          avgSafety,
+          avgFood,
+          ratingDistribution,
+        },
+        properties,
+      },
+    };
+  } catch (error: unknown) {
+    console.error("getOwnerReviewsAction error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to load property reviews.",
+    };
   }
 }
 

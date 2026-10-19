@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PropertySubNav } from "./PropertySubNav";
@@ -19,6 +19,7 @@ import {
   Edit,
   ExternalLink,
   ChevronRight,
+  Star,
 } from "lucide-react";
 
 interface PropertyDetailClientProps {
@@ -28,10 +29,12 @@ interface PropertyDetailClientProps {
 export function PropertyDetailClient({ property }: PropertyDetailClientProps) {
   const router = useRouter();
   const [currentStatus, setCurrentStatus] = useState<string>(property.status);
+  const [prevStatus, setPrevStatus] = useState<string>(property.status);
 
-  useEffect(() => {
+  if (property.status !== prevStatus) {
+    setPrevStatus(property.status);
     setCurrentStatus(property.status);
-  }, [property.status]);
+  }
 
   const [isPublishing, setIsPublishing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -364,6 +367,100 @@ export function PropertyDetailClient({ property }: PropertyDetailClientProps) {
               </div>
             )}
           </div>
+
+          {/* Resident Ratings & Reviews Section */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
+                  <span>Resident Ratings & Reviews</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Verified feedback, cleanliness ratings, and resident satisfaction.
+                </p>
+              </div>
+
+              <Link
+                href={`/owner/properties/${property.id}/reviews`}
+                className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200/80 transition-colors"
+              >
+                <span>View Full Breakdown</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            {/* Scorecard Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-amber-50/40 border border-amber-100 rounded-2xl p-4">
+              <div className="text-center sm:text-left sm:border-r sm:border-amber-200/60 sm:pr-4">
+                <div className="text-3xl font-black text-slate-900 flex items-center justify-center sm:justify-start gap-1">
+                  <span>{property.averageRating || "—"}</span>
+                  <Star className="h-6 w-6 fill-amber-400 text-amber-500" />
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  {property.reviewCount && property.reviewCount > 0
+                    ? `Based on ${property.reviewCount} ${property.reviewCount === 1 ? "review" : "reviews"}`
+                    : "No reviews yet"}
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-white p-2.5 border border-amber-100/80 text-center">
+                <div className="text-[10px] font-bold uppercase text-slate-400">Cleanliness</div>
+                <div className="text-lg font-black text-slate-800 mt-0.5">
+                  {property.avgCleanliness ? `${property.avgCleanliness} ★` : "—"}
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-white p-2.5 border border-amber-100/80 text-center">
+                <div className="text-[10px] font-bold uppercase text-slate-400">Security</div>
+                <div className="text-lg font-black text-slate-800 mt-0.5">
+                  {property.avgSafety ? `${property.avgSafety} ★` : "—"}
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-white p-2.5 border border-amber-100/80 text-center">
+                <div className="text-[10px] font-bold uppercase text-slate-400">Food Quality</div>
+                <div className="text-lg font-black text-slate-800 mt-0.5">
+                  {property.avgFood ? `${property.avgFood} ★` : "N/A"}
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Reviews Snippets */}
+            {property.reviews && property.reviews.length > 0 ? (
+              <div className="divide-y divide-slate-100 pt-2 space-y-3">
+                {property.reviews.slice(0, 3).map((r: any) => (
+                  <div key={r.id} className="pt-3 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900">{r.user?.fullName || "Verified Resident"}</span>
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.2 text-[10px] font-bold text-amber-800">
+                          <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-500" />
+                          {r.rating} / 5
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-400">
+                        {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
+                    </div>
+
+                    {r.title && <p className="font-semibold text-slate-800">{r.title}</p>}
+                    <p className="text-slate-600 italic">&ldquo;{r.comment}&rdquo;</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-xs text-slate-400">
+                <p>No resident ratings or reviews yet for this property.</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Seekers and residents can submit star ratings directly on your public listing.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Col: Stat Snapshot & Property Controls */}
@@ -397,6 +494,16 @@ export function PropertyDetailClient({ property }: PropertyDetailClientProps) {
 
             <div className="border-t border-slate-100 pt-3 flex items-center justify-between text-xs text-slate-600">
               <span className="flex items-center gap-1.5">
+                <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-400" />
+                <span>Property Rating:</span>
+              </span>
+              <span className="font-bold text-slate-900">
+                {property.averageRating ? `${property.averageRating} ★ (${property.reviewCount})` : "Unrated"}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-slate-400" />
                 <span>Pending Enquiries:</span>
               </span>
@@ -420,6 +527,17 @@ export function PropertyDetailClient({ property }: PropertyDetailClientProps) {
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
               Property Actions
             </h3>
+
+            <Link
+              href={`/owner/properties/${property.id}/reviews`}
+              className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs font-semibold text-amber-900 hover:bg-amber-100 transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
+                <span>View Ratings & Reviews</span>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-amber-600" />
+            </Link>
 
             <Link
               href={`/owner/properties/${property.id}/rooms`}

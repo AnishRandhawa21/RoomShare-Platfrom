@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -11,6 +11,7 @@ import {
   Search,
   TrendingUp,
   Edit3,
+  Star,
 } from "lucide-react";
 import { PropertyStatus } from "@/lib/enums";
 import { togglePropertyStatusAction } from "@/actions/owner";
@@ -29,6 +30,8 @@ interface PropertyItem {
   totalOccupiedBeds: number;
   totalVacantBeds: number;
   occupancyRate: number;
+  averageRating?: number | null;
+  reviewCount?: number;
   roomTypes: Array<{
     id: string;
     name: string;
@@ -48,10 +51,12 @@ export function OwnerPropertiesList({
   hasOwnerProfile,
 }: OwnerPropertiesListProps) {
   const [properties, setProperties] = useState<PropertyItem[]>(initialProperties);
+  const [prevInitial, setPrevInitial] = useState(initialProperties);
 
-  useEffect(() => {
+  if (initialProperties !== prevInitial) {
+    setPrevInitial(initialProperties);
     setProperties(initialProperties);
-  }, [initialProperties]);
+  }
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
@@ -248,6 +253,27 @@ export function OwnerPropertiesList({
                   <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold text-zinc-700">
                     {property.genderPolicy.replace(/_/g, " ")}
                   </span>
+
+                  {property.averageRating ? (
+                    <Link
+                      href={`/owner/properties/${property.id}/reviews`}
+                      className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition-colors"
+                      title={`${property.averageRating} out of 5 stars (${property.reviewCount} reviews)`}
+                    >
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
+                      <span>{property.averageRating}</span>
+                      <span className="text-[10px] text-amber-600 font-normal">({property.reviewCount})</span>
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/owner/properties/${property.id}/reviews`}
+                      className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 hover:bg-zinc-200 transition-colors"
+                      title="No ratings received yet"
+                    >
+                      <Star className="h-2.5 w-2.5 text-zinc-400" />
+                      <span>Unrated</span>
+                    </Link>
+                  )}
                 </div>
 
                 <Link
@@ -328,11 +354,20 @@ export function OwnerPropertiesList({
               </Link>
 
               <Link
+                href={`/owner/properties/${property.id}/reviews`}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-xs font-bold text-amber-800 hover:bg-amber-100 transition-colors shadow-2xs"
+                title="View reviews & ratings for this property"
+              >
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                <span>Reviews</span>
+              </Link>
+
+              <Link
                 href={`/owner/properties/${property.id}/rooms`}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-zinc-900 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 transition-colors shadow-sm"
               >
                 <BedDouble className="h-3.5 w-3.5" />
-                <span>Manage Rooms</span>
+                <span>Rooms</span>
               </Link>
 
               <button
