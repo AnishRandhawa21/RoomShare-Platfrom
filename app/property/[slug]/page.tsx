@@ -105,6 +105,15 @@ async function PropertyDataLoader({ params }: PropertyPageProps) {
           },
         },
       },
+      reviews: {
+        where: { status: "APPROVED" },
+        include: {
+          user: {
+            include: { profile: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -211,6 +220,20 @@ async function PropertyDataLoader({ params }: PropertyPageProps) {
       companyName: property.owner?.businessName || null,
       isVerified: property.owner?.verificationStatus === "VERIFIED",
     },
+    reviews: property.reviews.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      title: r.title,
+      comment: r.comment,
+      cleanliness: r.cleanliness,
+      foodQuality: r.foodQuality,
+      safety: r.safety,
+      createdAt: r.createdAt.toISOString(),
+      user: {
+        fullName: r.user.profile?.fullName || "Verified Resident",
+        avatarUrl: r.user.profile?.avatarUrl || null,
+      },
+    })),
   };
 
   const serializedUser = user

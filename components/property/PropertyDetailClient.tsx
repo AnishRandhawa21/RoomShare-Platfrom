@@ -11,12 +11,17 @@ import { OwnerContactCard } from "./OwnerContactCard";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { SinglePropertyMap } from "@/components/map/SinglePropertyMap";
 import {
+  PropertyReviewsSection,
+  type PropertyReviewData,
+} from "./PropertyReviewsSection";
+import {
   MapPin,
   ShieldCheck,
   ChevronRight,
   Phone,
   MessageSquare,
   CheckCircle2,
+  Star,
 } from "lucide-react";
 
 interface PropertyDetailClientProps {
@@ -52,6 +57,7 @@ interface PropertyDetailClientProps {
       companyName: string | null;
       isVerified: boolean;
     };
+    reviews?: PropertyReviewData[];
   };
   currentUser?: {
     id: string;
@@ -167,6 +173,32 @@ export function PropertyDetailClient({
                         <span>Verified Stay</span>
                       </span>
                     )}
+
+                    {property.reviews && property.reviews.length > 0 ? (
+                      <a
+                        href="#reviews-section"
+                        className="rounded-full bg-amber-50 text-amber-900 border border-amber-200/70 px-3 py-1 text-xs font-bold flex items-center gap-1 shadow-2xs hover:bg-amber-100 transition-colors"
+                      >
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        <span>
+                          {(
+                            property.reviews.reduce((a, r) => a + r.rating, 0) /
+                            property.reviews.length
+                          ).toFixed(1)}
+                        </span>
+                        <span className="text-zinc-400 font-normal">
+                          ({property.reviews.length})
+                        </span>
+                      </a>
+                    ) : (
+                      <a
+                        href="#reviews-section"
+                        className="rounded-full bg-zinc-100 text-zinc-600 hover:text-zinc-900 px-3 py-1 text-xs font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <Star className="h-3.5 w-3.5 text-zinc-400" />
+                        <span>Rate PG</span>
+                      </a>
+                    )}
                   </div>
 
                   <BookmarkButton
@@ -265,6 +297,15 @@ export function PropertyDetailClient({
                   </div>
                 )}
               </div>
+
+              {/* Resident Reviews & Star Ratings */}
+              <PropertyReviewsSection
+                propertyId={property.id}
+                propertyName={property.name}
+                propertySlug={property.slug}
+                initialReviews={property.reviews || []}
+                currentUser={currentUser}
+              />
 
               {/* Location & Interactive Neighborhood Map */}
               <SinglePropertyMap
