@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/lib/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 // Global singleton pattern for PrismaClient in Next.js
 const globalForPrisma = globalThis as unknown as {
@@ -36,4 +36,4 @@ function getPrismaClient(): PrismaClient {
 
 export const prisma = getPrismaClient();
 
-export * from "@/lib/generated/prisma/client";
+export * from "@prisma/client";

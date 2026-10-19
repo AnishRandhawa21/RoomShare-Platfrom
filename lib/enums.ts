@@ -1,6 +1,5 @@
 /**
- * Standalone client-safe Enums generated from prisma schema.
- * Imported from @/lib/generated/prisma/enums (contains zero nodejs dependencies).
+ * Client-safe Enums exported from @prisma/client.
  */
 
-export * from "@/lib/generated/prisma/enums";
+export * from "@prisma/client";

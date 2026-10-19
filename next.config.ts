@@ -13,9 +13,6 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ["@prisma/client", "prisma"],
-  outputFileTracingIncludes: {
-    "/**": ["./lib/generated/prisma/**/*"],
-  },
   experimental: {
     agentFeedback: true,
   },
