@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import {
   GenderPolicy,
@@ -128,9 +129,9 @@ export async function getRoommateRequests(filters?: RoommateFilters) {
 }
 
 /**
- * Detailed single roommate request for detail view
+ * Detailed single roommate request for detail view (deduplicated via React cache)
  */
-export async function getRoommateRequestById(id: string) {
+export const getRoommateRequestById = cache(async (id: string) => {
   try {
     const item = await prisma.roommateRequest.findUnique({
       where: { id },
@@ -201,4 +202,4 @@ export async function getRoommateRequestById(id: string) {
     console.error(`Error querying roommate request ${id}:`, error);
     return null;
   }
-}
+});

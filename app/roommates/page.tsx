@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     "Connect directly with working professionals and students looking for roommates and flatshares without paying broker commission.",
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 interface RoommatesPageProps {
   searchParams?: Promise<{

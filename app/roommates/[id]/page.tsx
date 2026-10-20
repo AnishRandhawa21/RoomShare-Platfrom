@@ -8,6 +8,8 @@ import { getRoommateRequestById } from "@/lib/roommate";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDiscoveryLocations } from "@/lib/discovery";
 
+export const revalidate = 60;
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }

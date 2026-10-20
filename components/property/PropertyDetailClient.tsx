@@ -9,7 +9,7 @@ import { RoomTypesSection, RoomTypeData } from "./RoomTypesSection";
 import { AmenitiesSection, AmenityItem } from "./AmenitiesSection";
 import { OwnerContactCard } from "./OwnerContactCard";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
-import { SinglePropertyMap } from "@/components/map/SinglePropertyMap";
+import dynamic from "next/dynamic";
 import {
   PropertyReviewsSection,
   type PropertyReviewData,
@@ -22,7 +22,21 @@ import {
   MessageSquare,
   CheckCircle2,
   Star,
+  Loader2,
 } from "lucide-react";
+
+const SinglePropertyMap = dynamic(
+  () => import("@/components/map/SinglePropertyMap").then((mod) => mod.SinglePropertyMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 sm:h-80 w-full rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col items-center justify-center text-zinc-400 gap-2">
+        <Loader2 className="h-5 w-5 animate-spin text-[#00412E]" />
+        <span className="text-xs font-semibold text-zinc-500">Loading map...</span>
+      </div>
+    ),
+  }
+);
 
 interface PropertyDetailClientProps {
   property: {

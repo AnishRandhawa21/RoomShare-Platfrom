@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { GenderPolicy, type Prisma } from "@/lib/prisma";
 
@@ -320,94 +321,99 @@ export interface DiscoveryLocationCity {
 
 /**
  * Fetch dynamic active cities and their localities from Prisma DB (Location Master + Live Properties)
+ * Cached with 300s TTL for fast edge responses
  */
-export async function getDiscoveryLocations(): Promise<{
-  cities: DiscoveryLocationCity[];
-}> {
-  try {
-    // 1. Fetch active cities from Location Master
-    const dbCities = await prisma.city.findMany({
-      where: { isActive: true },
-      include: {
-        localities: {
-          where: { isActive: true },
-          select: { name: true },
-          orderBy: { name: "asc" },
+export const getDiscoveryLocations = unstable_cache(
+  async (): Promise<{
+    cities: DiscoveryLocationCity[];
+  }> => {
+    try {
+      // 1. Fetch active cities from Location Master
+      const dbCities = await prisma.city.findMany({
+        where: { isActive: true },
+        include: {
+          localities: {
+            where: { isActive: true },
+            select: { name: true },
+            orderBy: { name: "asc" },
+          },
         },
-      },
-      orderBy: { name: "asc" },
-    });
-
-    // 2. Fetch distinct cities & localities that have published properties
-    const propertyGroups = await prisma.property.groupBy({
-      by: ["city", "locality"],
-      where: {
-        status: "PUBLISHED",
-        deletedAt: null,
-      },
-      _count: { id: true },
-    });
-
-    // 3. Aggregate into a unified map
-    const cityMap = new Map<string, { localities: Set<string>; count: number }>();
-
-    // First populate from active DB cities
-    for (const c of dbCities) {
-      cityMap.set(c.name, {
-        localities: new Set(c.localities.map((l) => l.name)),
-        count: 0,
+        orderBy: { name: "asc" },
       });
-    }
 
-    // Next merge property cities & localities
-    for (const group of propertyGroups) {
-      const cityName = group.city.trim();
-      const localityName = group.locality.trim();
-      if (!cityName) continue;
+      // 2. Fetch distinct cities & localities that have published properties
+      const propertyGroups = await prisma.property.groupBy({
+        by: ["city", "locality"],
+        where: {
+          status: "PUBLISHED",
+          deletedAt: null,
+        },
+        _count: { id: true },
+      });
 
-      let entry = cityMap.get(cityName);
-      if (!entry) {
-        // Look for case-insensitive match
-        for (const [existingName, val] of cityMap.entries()) {
-          if (existingName.toLowerCase() === cityName.toLowerCase()) {
-            entry = val;
-            break;
+      // 3. Aggregate into a unified map
+      const cityMap = new Map<string, { localities: Set<string>; count: number }>();
+
+      // First populate from active DB cities
+      for (const c of dbCities) {
+        cityMap.set(c.name, {
+          localities: new Set(c.localities.map((l) => l.name)),
+          count: 0,
+        });
+      }
+
+      // Next merge property cities & localities
+      for (const group of propertyGroups) {
+        const cityName = group.city.trim();
+        const localityName = group.locality.trim();
+        if (!cityName) continue;
+
+        let entry = cityMap.get(cityName);
+        if (!entry) {
+          // Look for case-insensitive match
+          for (const [existingName, val] of cityMap.entries()) {
+            if (existingName.toLowerCase() === cityName.toLowerCase()) {
+              entry = val;
+              break;
+            }
           }
         }
+
+        if (!entry) {
+          entry = { localities: new Set<string>(), count: 0 };
+          cityMap.set(cityName, entry);
+        }
+
+        if (localityName) {
+          entry.localities.add(localityName);
+        }
+        entry.count += group._count.id;
       }
 
-      if (!entry) {
-        entry = { localities: new Set<string>(), count: 0 };
-        cityMap.set(cityName, entry);
-      }
+      // Convert map to array, prioritizing cities that have published properties first, then alphabetically
+      const cities: DiscoveryLocationCity[] = Array.from(cityMap.entries()).map(
+        ([name, data]) => ({
+          name,
+          localities: Array.from(data.localities),
+          propertyCount: data.count,
+        })
+      );
 
-      if (localityName) {
-        entry.localities.add(localityName);
-      }
-      entry.count += group._count.id;
+      cities.sort((a, b) => {
+        // Prioritize cities with published properties
+        if ((b.propertyCount || 0) !== (a.propertyCount || 0)) {
+          return (b.propertyCount || 0) - (a.propertyCount || 0);
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      return { cities };
+    } catch (err) {
+      console.error("Error fetching discovery locations:", err);
+      return { cities: [] };
     }
-
-    // Convert map to array, prioritizing cities that have published properties first, then alphabetically
-    const cities: DiscoveryLocationCity[] = Array.from(cityMap.entries()).map(
-      ([name, data]) => ({
-        name,
-        localities: Array.from(data.localities),
-        propertyCount: data.count,
-      })
-    );
-
-    cities.sort((a, b) => {
-      // Prioritize cities with published properties
-      if ((b.propertyCount || 0) !== (a.propertyCount || 0)) {
-        return (b.propertyCount || 0) - (a.propertyCount || 0);
-      }
-      return a.name.localeCompare(b.name);
-    });
-
-    return { cities };
-  } catch (err) {
-    console.error("Error fetching discovery locations:", err);
-    return { cities: [] };
-  }
-}
+  },
+  ["discovery-locations-cache"],
+  { revalidate: 300, tags: ["locations"] }
+);
 

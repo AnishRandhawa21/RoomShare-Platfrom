@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
@@ -6,32 +6,60 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { PropertyDetailClient } from "@/components/property/PropertyDetailClient";
 import { APP_BASE_URL, toSlug, generatePropertyJsonLd, generateBreadcrumbJsonLd } from "@/lib/seo";
 
+export const revalidate = 60;
+
 interface PropertyPageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: PropertyPageProps): Promise<Metadata> {
-  const { slug } = await params;
-
-  const property = await prisma.property.findUnique({
+// React cache deduplicates this database call between generateMetadata and PropertyDataLoader
+const getPropertyBySlug = cache(async (slug: string) => {
+  return await prisma.property.findUnique({
     where: { slug },
-    select: {
-      name: true,
-      locality: true,
-      city: true,
-      startingPrice: true,
-      description: true,
+    include: {
       images: {
-        where: { isCover: true },
-        select: { url: true },
-        take: 1,
+        orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
+      },
+      amenities: {
+        include: { amenity: true },
       },
       roomTypes: {
         where: { isActive: true },
-        select: { monthlyRent: true, occupancy: true },
+        include: {
+          rooms: {
+            select: { id: true, occupiedBeds: true, status: true },
+          },
+          amenities: {
+            include: { amenity: true },
+          },
+        },
+        orderBy: { monthlyRent: "asc" },
+      },
+      owner: {
+        include: {
+          user: {
+            include: {
+              profile: true,
+            },
+          },
+        },
+      },
+      reviews: {
+        where: { status: "APPROVED" },
+        include: {
+          user: {
+            include: { profile: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
       },
     },
   });
+});
+
+export async function generateMetadata({ params }: PropertyPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const property = await getPropertyBySlug(slug);
 
   if (!property) {
     return {
@@ -84,49 +112,10 @@ export async function generateMetadata({ params }: PropertyPageProps): Promise<M
 
 async function PropertyDataLoader({ params }: PropertyPageProps) {
   const { slug } = await params;
-  const user = await getCurrentUser();
-
-  const property = await prisma.property.findUnique({
-    where: { slug },
-    include: {
-      images: {
-        orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
-      },
-      amenities: {
-        include: { amenity: true },
-      },
-      roomTypes: {
-        where: { isActive: true },
-        include: {
-          rooms: {
-            select: { id: true, occupiedBeds: true, status: true },
-          },
-          amenities: {
-            include: { amenity: true },
-          },
-        },
-        orderBy: { monthlyRent: "asc" },
-      },
-      owner: {
-        include: {
-          user: {
-            include: {
-              profile: true,
-            },
-          },
-        },
-      },
-      reviews: {
-        where: { status: "APPROVED" },
-        include: {
-          user: {
-            include: { profile: true },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
+  const [property, user] = await Promise.all([
+    getPropertyBySlug(slug),
+    getCurrentUser(),
+  ]);
 
   if (!property || property.deletedAt) {
     notFound();

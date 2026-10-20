@@ -42,11 +42,6 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Refresh auth token
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const pathname = request.nextUrl.pathname;
 
   // Protected paths that require authentication
@@ -63,6 +58,37 @@ export async function updateSession(request: NextRequest) {
     protectedPrefixes.some((prefix) => pathname.startsWith(prefix)) &&
     !pathname.startsWith("/owner/invite");
 
+  const authRoutes = ["/login", "/signup", "/forgot-password"];
+  const isAuthRoute = authRoutes.includes(pathname);
+
+  // Fast-check whether any Supabase auth cookies are present in request
+  const allCookies = request.cookies.getAll();
+  const hasAuthCookie = allCookies.some(
+    (c) =>
+      c.name.startsWith("sb-") &&
+      (c.name.includes("-auth-token") ||
+        c.name.includes("access_token") ||
+        c.name.includes("refresh_token"))
+  );
+
+  // FAST PATH: If visitor has no auth cookies at all...
+  if (!hasAuthCookie) {
+    // If trying to access a protected page, redirect to login instantly without waiting on network
+    if (isProtectedPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("returnUrl", pathname);
+      return NextResponse.redirect(url);
+    }
+    // For all public pages (/ , /property/*, /roommates, etc.), return immediately!
+    return supabaseResponse;
+  }
+
+  // Refresh auth token only when auth cookies actually exist
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   // If unauthenticated user tries to access protected page, redirect to login
   if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
@@ -72,8 +98,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // If authenticated user visits login/signup/forgot-password, redirect to profile
-  const authRoutes = ["/login", "/signup", "/forgot-password"];
-  if (user && authRoutes.includes(pathname)) {
+  if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/profile";
     return NextResponse.redirect(url);

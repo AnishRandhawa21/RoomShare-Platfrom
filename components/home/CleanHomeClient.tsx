@@ -31,8 +31,21 @@ import type {
 } from "@/lib/discovery";
 import { rankProperties } from "@/lib/ranking";
 import { getSearchSuggestionsAction, type SearchSuggestionsResult } from "@/actions/search";
+import dynamic from "next/dynamic";
 import { PropertyCard } from "@/components/property/PropertyCard";
-import { PropertyMap } from "@/components/map/PropertyMap";
+
+const PropertyMap = dynamic(
+  () => import("@/components/map/PropertyMap").then((mod) => mod.PropertyMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[450px] rounded-3xl bg-zinc-50 border border-zinc-200 flex flex-col items-center justify-center text-zinc-400 gap-2.5">
+        <Loader2 className="h-6 w-6 animate-spin text-[#00412E]" />
+        <span className="text-xs font-semibold text-zinc-500">Loading map...</span>
+      </div>
+    ),
+  }
+);
 import { getPropertiesInBoundsAction } from "@/actions/map";
 import {
   calculateDistanceKm,
