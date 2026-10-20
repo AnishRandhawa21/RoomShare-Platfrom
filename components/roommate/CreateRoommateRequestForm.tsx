@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   MapPin,
   Calendar,
@@ -18,11 +19,16 @@ import {
   Moon,
   Briefcase,
   Lock,
+  Check,
+  PawPrint,
+  Search,
 } from "lucide-react";
 import {
   createRoommateRequestAction,
   type CreateRoommateRequestInput,
 } from "@/actions/roommate";
+import { CustomDatePicker } from "@/components/ui/CustomDatePicker";
+import { CustomSelect, type CustomSelectOption } from "@/components/ui/CustomSelect";
 import {
   DietaryPreference,
   SmokingPreference,
@@ -57,6 +63,7 @@ export interface PropertyOptionWithRooms {
   city: string;
   state: string;
   genderPolicy: string;
+  imageUrl?: string | null;
   roomTypes: {
     id: string;
     name: string;
@@ -66,6 +73,42 @@ export interface PropertyOptionWithRooms {
     hasAttachedBathroom: boolean;
   }[];
 }
+
+const DIETARY_OPTIONS: CustomSelectOption[] = [
+  { value: DietaryPreference.NO_PREFERENCE, label: "No Preference" },
+  { value: DietaryPreference.VEGETARIAN_ONLY, label: "Vegetarian Only" },
+  { value: DietaryPreference.NON_VEG_OK, label: "Non-Veg OK" },
+  { value: DietaryPreference.VEGAN, label: "Vegan Only" },
+];
+
+const SMOKING_OPTIONS: CustomSelectOption[] = [
+  { value: SmokingPreference.NON_SMOKER_ONLY, label: "Non-Smoker Only" },
+  { value: SmokingPreference.OUTSIDE_ONLY, label: "Outside / Balcony Only" },
+  { value: SmokingPreference.SMOKING_OK, label: "Smoking OK" },
+];
+
+const DRINKING_OPTIONS: CustomSelectOption[] = [
+  { value: DrinkingPreference.NO_PREFERENCE, label: "No Preference" },
+  { value: DrinkingPreference.NON_DRINKER_ONLY, label: "Non-Drinker Only" },
+  { value: DrinkingPreference.OCCASIONAL_OK, label: "Occasional Drinking OK" },
+];
+
+const OCCUPATION_OPTIONS: CustomSelectOption[] = [
+  { value: OccupationPreference.ANY, label: "Any (Students & Professionals)" },
+  { value: OccupationPreference.WORKING_PROFESSIONAL, label: "Working Professionals Only" },
+  { value: OccupationPreference.STUDENT, label: "College Students Only" },
+];
+
+const SLEEP_SCHEDULE_OPTIONS: CustomSelectOption[] = [
+  { value: SleepSchedule.FLEXIBLE, label: "Flexible Schedule" },
+  { value: SleepSchedule.EARLY_BIRD, label: "Early Bird (Sleeps < 11 PM)" },
+  { value: SleepSchedule.NIGHT_OWL, label: "Night Owl (Late nights)" },
+];
+
+const PET_OPTIONS: CustomSelectOption[] = [
+  { value: "false", label: "No Pets Allowed" },
+  { value: "true", label: "Pets Allowed & Welcome" },
+];
 
 interface CreateRoommateRequestFormProps {
   initialPGContext?: SelectedPGContext | null;
@@ -88,6 +131,33 @@ export function CreateRoommateRequestForm({
   // Selector state if user came without pre-selected PG
   const [selectedPropId, setSelectedPropId] = useState<string>("");
   const [selectedRtId, setSelectedRtId] = useState<string>("");
+  const [pgSearchQuery, setPgSearchQuery] = useState<string>("");
+  const [isPgDropdownOpen, setIsPgDropdownOpen] = useState<boolean>(false);
+  const pgSearchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        pgSearchRef.current &&
+        !pgSearchRef.current.contains(e.target as Node)
+      ) {
+        setIsPgDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredProperties = useMemo(() => {
+    if (!pgSearchQuery.trim()) return properties;
+    const q = pgSearchQuery.toLowerCase().trim();
+    return properties.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.locality.toLowerCase().includes(q) ||
+        p.city.toLowerCase().includes(q)
+    );
+  }, [properties, pgSearchQuery]);
 
   // Personal / Request-specific Inputs (ONLY what is required from the user)
   const [moveInDate, setMoveInDate] = useState<string>(() => {
@@ -336,45 +406,180 @@ export function CreateRoommateRequestForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <div>
               <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                Select PG Accommodation
+                Search PG Accommodation
               </label>
-              <select
-                value={selectedPropId}
-                onChange={(e) => handleSelectProperty(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs font-semibold text-zinc-800 focus:bg-white focus:outline-none focus:border-violet-500"
-              >
-                <option value="">-- Choose a published PG --</option>
-                {properties.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.locality}, {p.city})
-                  </option>
-                ))}
-              </select>
+
+              {selectedPropForPicker ? (
+                <div className="h-[46px] rounded-xl border border-[#00412E]/30 bg-white px-2.5 py-1.5 flex items-center justify-between gap-2.5 shadow-2xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="relative h-8 w-8 rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200/80">
+                      {selectedPropForPicker.imageUrl ? (
+                        <Image
+                          src={selectedPropForPicker.imageUrl}
+                          alt={selectedPropForPicker.name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-zinc-400">
+                          <Building2 className="h-4 w-4" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-zinc-900 truncate">
+                        {selectedPropForPicker.name}
+                      </div>
+                      <div className="text-[10px] text-zinc-500 truncate flex items-center gap-1">
+                        <MapPin className="h-2.5 w-2.5 text-zinc-400 shrink-0" />
+                        <span>
+                          {selectedPropForPicker.locality}, {selectedPropForPicker.city}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPropId("");
+                      setSelectedRtId("");
+                      setPgSearchQuery("");
+                      setIsPgDropdownOpen(true);
+                    }}
+                    className="shrink-0 text-[11px] font-bold text-[#00412E] hover:underline px-2 py-1 rounded-lg bg-[#00412E]/5 hover:bg-[#00412E]/10 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Change</span>
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative" ref={pgSearchRef}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Type PG name, area or city..."
+                      value={pgSearchQuery}
+                      onChange={(e) => {
+                        setPgSearchQuery(e.target.value);
+                        setIsPgDropdownOpen(true);
+                      }}
+                      onFocus={() => setIsPgDropdownOpen(true)}
+                      className="w-full h-[46px] rounded-xl border border-zinc-200 bg-zinc-50/80 pl-9 pr-8 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:border-[#00412E] focus:ring-2 focus:ring-[#00412E]/10 transition-all shadow-2xs"
+                    />
+                    {pgSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setPgSearchQuery("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600 rounded-md"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown with property image in start and then property name */}
+                  {isPgDropdownOpen && (
+                    <div className="absolute left-0 top-full mt-1.5 w-full rounded-2xl border border-[#E8EAE5] bg-white p-1.5 shadow-2xl shadow-zinc-900/10 ring-1 ring-black/5 animate-in fade-in-50 zoom-in-95 duration-150 z-50">
+                      <div className="max-h-64 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                        {filteredProperties.length > 0 ? (
+                          filteredProperties.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                handleSelectProperty(p.id);
+                                setIsPgDropdownOpen(false);
+                                setPgSearchQuery("");
+                              }}
+                              className="group flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-[#00412E]/5 transition-all cursor-pointer border border-transparent hover:border-[#00412E]/15"
+                            >
+                              {/* Image in start */}
+                              <div className="relative h-11 w-11 rounded-xl overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200/80 shadow-2xs">
+                                {p.imageUrl ? (
+                                  <Image
+                                    src={p.imageUrl}
+                                    alt={p.name}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform"
+                                  />
+                                ) : (
+                                  <div className="h-full w-full flex items-center justify-center text-zinc-400">
+                                    <Building2 className="h-5 w-5" />
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Name and location */}
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-bold text-zinc-900 group-hover:text-[#00412E] truncate">
+                                  {p.name}
+                                </div>
+                                <div className="text-[11px] text-zinc-500 truncate flex items-center gap-1 mt-0.5">
+                                  <MapPin className="h-3 w-3 text-zinc-400 shrink-0" />
+                                  <span>
+                                    {p.locality}, {p.city}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Badge */}
+                              <div className="shrink-0 flex flex-col items-end gap-0.5">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-700">
+                                  {p.genderPolicy === "BOYS"
+                                    ? "Boys PG"
+                                    : p.genderPolicy === "GIRLS"
+                                    ? "Girls PG"
+                                    : "Coliving"}
+                                </span>
+                                <span className="text-[10px] text-zinc-400">
+                                  {p.roomTypes.length} sharing option
+                                  {p.roomTypes.length > 1 ? "s" : ""}
+                                </span>
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="py-6 text-center text-xs text-zinc-400">
+                            No PG found matching &quot;{pgSearchQuery}&quot;
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
                 Select Room Type
               </label>
-              <select
+              <CustomSelect
                 disabled={!selectedPropForPicker}
+                triggerHeight="h-[46px]"
                 value={selectedRtId}
-                onChange={(e) => handleSelectRoomType(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs font-semibold text-zinc-800 focus:bg-white focus:outline-none focus:border-violet-500 disabled:opacity-50"
-              >
-                <option value="">-- Choose room type --</option>
-                {selectedPropForPicker?.roomTypes
-                  .filter((rt) => rt.occupancy > 1)
-                  .map((rt) => {
-                    const splitRent = Math.round(rt.monthlyRent / Math.max(1, rt.occupancy));
-                    return (
-                      <option key={rt.id} value={rt.id}>
-                        {rt.name} - ₹{splitRent.toLocaleString("en-IN")}/person
-                        {` (Total ₹${rt.monthlyRent.toLocaleString("en-IN")}, ${rt.occupancy}-way split)`}
-                      </option>
-                    );
-                  })}
-              </select>
+                onChange={handleSelectRoomType}
+                placeholder={
+                  selectedPropForPicker
+                    ? "-- Choose room type --"
+                    : "Search and select a PG first"
+                }
+                options={
+                  selectedPropForPicker?.roomTypes
+                    .filter((rt) => rt.occupancy > 1)
+                    .map((rt) => {
+                      const splitRent = Math.round(
+                        rt.monthlyRent / Math.max(1, rt.occupancy)
+                      );
+                      return {
+                        value: rt.id,
+                        label: `${rt.name} - ₹${splitRent.toLocaleString("en-IN")}/person`,
+                        description: `Total ₹${rt.monthlyRent.toLocaleString("en-IN")}, ${rt.occupancy}-way split`,
+                      };
+                    }) || []
+                }
+              />
             </div>
           </div>
         </div>
@@ -404,16 +609,13 @@ export function CreateRoommateRequestForm({
             <label className="block text-xs font-bold text-zinc-800 mb-1.5">
               Target Move-in Date <span className="text-rose-500">*</span>
             </label>
-            <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 focus-within:border-violet-500 focus-within:bg-white">
-              <Calendar className="h-4 w-4 text-violet-600 mr-2 shrink-0" />
-              <input
-                type="date"
-                required
-                value={moveInDate}
-                onChange={(e) => setMoveInDate(e.target.value)}
-                className="w-full bg-transparent text-xs font-medium text-zinc-900 focus:outline-none"
-              />
-            </div>
+            <CustomDatePicker
+              value={moveInDate}
+              onChange={setMoveInDate}
+              minDate={new Date().toISOString().split("T")[0]}
+              placeholder="Select target move-in date"
+              required
+            />
           </div>
 
           {/* Optional custom headline */}
@@ -430,7 +632,7 @@ export function CreateRoommateRequestForm({
                   ? `Roommate needed for ${activePG.roomTypeName} at ${activePG.propertyName}`
                   : "Looking for 1 roommate..."
               }
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:border-violet-500"
+              className="w-full h-[42px] rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:border-violet-500"
             />
           </div>
         </div>
@@ -463,16 +665,11 @@ export function CreateRoommateRequestForm({
                 <Utensils className="h-3.5 w-3.5 text-emerald-600" />
                 <span>Dietary Preference</span>
               </label>
-              <select
+              <CustomSelect
                 value={dietary}
-                onChange={(e) => setDietary(e.target.value as DietaryPreference)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-800 focus:outline-none focus:border-violet-500 focus:bg-white cursor-pointer"
-              >
-                <option value={DietaryPreference.NO_PREFERENCE}>No Preference</option>
-                <option value={DietaryPreference.VEGETARIAN_ONLY}>Vegetarian Only</option>
-                <option value={DietaryPreference.NON_VEG_OK}>Non-Veg OK</option>
-                <option value={DietaryPreference.VEGAN}>Vegan Only</option>
-              </select>
+                onChange={(val) => setDietary(val as DietaryPreference)}
+                options={DIETARY_OPTIONS}
+              />
             </div>
 
             {/* Smoking */}
@@ -481,15 +678,11 @@ export function CreateRoommateRequestForm({
                 <Cigarette className="h-3.5 w-3.5 text-rose-500" />
                 <span>Smoking Habit</span>
               </label>
-              <select
+              <CustomSelect
                 value={smoking}
-                onChange={(e) => setSmoking(e.target.value as SmokingPreference)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-800 focus:outline-none focus:border-violet-500 focus:bg-white cursor-pointer"
-              >
-                <option value={SmokingPreference.NON_SMOKER_ONLY}>Non-Smoker Only</option>
-                <option value={SmokingPreference.OUTSIDE_ONLY}>Outside / Balcony Only</option>
-                <option value={SmokingPreference.SMOKING_OK}>Smoking OK</option>
-              </select>
+                onChange={(val) => setSmoking(val as SmokingPreference)}
+                options={SMOKING_OPTIONS}
+              />
             </div>
 
             {/* Drinking */}
@@ -498,15 +691,11 @@ export function CreateRoommateRequestForm({
                 <Wine className="h-3.5 w-3.5 text-purple-500" />
                 <span>Drinking Habit</span>
               </label>
-              <select
+              <CustomSelect
                 value={drinking}
-                onChange={(e) => setDrinking(e.target.value as DrinkingPreference)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-800 focus:outline-none focus:border-violet-500 focus:bg-white cursor-pointer"
-              >
-                <option value={DrinkingPreference.NO_PREFERENCE}>No Preference</option>
-                <option value={DrinkingPreference.NON_DRINKER_ONLY}>Non-Drinker Only</option>
-                <option value={DrinkingPreference.OCCASIONAL_OK}>Occasional Drinking OK</option>
-              </select>
+                onChange={(val) => setDrinking(val as DrinkingPreference)}
+                options={DRINKING_OPTIONS}
+              />
             </div>
 
             {/* Occupation */}
@@ -515,15 +704,11 @@ export function CreateRoommateRequestForm({
                 <Briefcase className="h-3.5 w-3.5 text-blue-600" />
                 <span>Occupation Preference</span>
               </label>
-              <select
+              <CustomSelect
                 value={occupation}
-                onChange={(e) => setOccupation(e.target.value as OccupationPreference)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-800 focus:outline-none focus:border-violet-500 focus:bg-white cursor-pointer"
-              >
-                <option value={OccupationPreference.ANY}>Any (Students & Professionals)</option>
-                <option value={OccupationPreference.WORKING_PROFESSIONAL}>Working Professionals Only</option>
-                <option value={OccupationPreference.STUDENT}>College Students Only</option>
-              </select>
+                onChange={(val) => setOccupation(val as OccupationPreference)}
+                options={OCCUPATION_OPTIONS}
+              />
             </div>
 
             {/* Sleep Schedule */}
@@ -532,28 +717,24 @@ export function CreateRoommateRequestForm({
                 <Moon className="h-3.5 w-3.5 text-indigo-500" />
                 <span>Sleep Schedule</span>
               </label>
-              <select
+              <CustomSelect
                 value={sleepSchedule}
-                onChange={(e) => setSleepSchedule(e.target.value as SleepSchedule)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-800 focus:outline-none focus:border-violet-500 focus:bg-white cursor-pointer"
-              >
-                <option value={SleepSchedule.FLEXIBLE}>Flexible Schedule</option>
-                <option value={SleepSchedule.EARLY_BIRD}>Early Bird (Sleeps &lt; 11 PM)</option>
-                <option value={SleepSchedule.NIGHT_OWL}>Night Owl (Late nights)</option>
-              </select>
+                onChange={(val) => setSleepSchedule(val as SleepSchedule)}
+                options={SLEEP_SCHEDULE_OPTIONS}
+              />
             </div>
 
-            {/* Pets Allowed */}
-            <div className="flex flex-col justify-end">
-              <label className="flex items-center gap-2 p-2.5 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-colors cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={petsAllowed}
-                  onChange={(e) => setPetsAllowed(e.target.checked)}
-                  className="rounded border-zinc-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="text-xs font-semibold text-zinc-700">Pets Allowed & Welcome</span>
+            {/* Pet Policy */}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 mb-1.5">
+                <PawPrint className="h-3.5 w-3.5 text-amber-600" />
+                <span>Pet Policy</span>
               </label>
+              <CustomSelect
+                value={petsAllowed ? "true" : "false"}
+                onChange={(val) => setPetsAllowed(val === "true")}
+                options={PET_OPTIONS}
+              />
             </div>
           </div>
         </div>

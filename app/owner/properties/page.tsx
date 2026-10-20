@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { getOwnerPropertiesAction } from "@/actions/owner";
+import { checkPublishingEntitlementAction } from "@/actions/billing";
 import { OwnerPropertiesList } from "@/components/owner/OwnerPropertiesList";
 import { requireOwner } from "@/lib/auth/session";
 
@@ -10,14 +11,20 @@ export const metadata = {
 
 async function PropertiesDataLoader() {
   await requireOwner("/owner/properties");
-  const res = await getOwnerPropertiesAction();
+  const [res, entitlementRes] = await Promise.all([
+    getOwnerPropertiesAction(),
+    checkPublishingEntitlementAction(),
+  ]);
+
   const properties = res.success ? res.properties : [];
   const hasOwnerProfile = res.hasOwnerProfile ?? false;
+  const entitlement = entitlementRes.success ? entitlementRes.entitlement : null;
 
   return (
     <OwnerPropertiesList
       initialProperties={properties}
       hasOwnerProfile={hasOwnerProfile}
+      entitlement={entitlement}
     />
   );
 }

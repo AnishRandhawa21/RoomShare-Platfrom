@@ -3,21 +3,26 @@ import { requireAdmin } from "@/lib/auth/session";
 import { getAdminFeaturedListingsAction } from "@/actions/admin";
 import { AdminFeaturedClient } from "@/components/admin/AdminFeaturedClient";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
-  title: "Featured Listings | Admin Portal",
+  title: "Featured Listings & Boosts | Admin Portal",
   description: "Manage sponsored listings, homepage features, and promotional visibility ranks.",
 };
 
 interface AdminFeaturedPageProps {
   searchParams: Promise<{
     page?: string;
+    filter?: string;
+    q?: string;
   }>;
 }
 
 async function FeaturedLoader({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; filter?: string; q?: string }>;
 }) {
   await requireAdmin("/admin/featured");
   const params = await searchParams;
@@ -25,6 +30,8 @@ async function FeaturedLoader({
   const res = await getAdminFeaturedListingsAction({
     page: parseInt(params.page || "1", 10),
     limit: 15,
+    filter: params.filter as any,
+    search: params.q,
   });
 
   if (!res.success || !res.data) {
@@ -41,6 +48,7 @@ async function FeaturedLoader({
       total={res.data.total}
       currentPage={res.data.page}
       totalPages={res.data.totalPages}
+      counts={res.data.counts}
     />
   );
 }

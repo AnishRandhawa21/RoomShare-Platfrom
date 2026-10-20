@@ -12,8 +12,16 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.user) {
-      await syncAppUser(data.user);
-      return NextResponse.redirect(`${origin}${next}`);
+      const appUser = await syncAppUser(data.user);
+      let target = next;
+      if (appUser) {
+        if (appUser.role === "ADMIN") {
+          target = next && next.startsWith("/admin") ? next : "/admin";
+        } else if (appUser.role === "OWNER" || appUser.ownerProfile) {
+          target = next && next.startsWith("/owner") ? next : "/owner";
+        }
+      }
+      return NextResponse.redirect(`${origin}${target}`);
     }
   }
 

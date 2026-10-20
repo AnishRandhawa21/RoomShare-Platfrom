@@ -196,6 +196,8 @@ export async function loginAction(
     }
   }
 
+  let destination = returnUrl;
+
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -224,7 +226,16 @@ export async function loginAction(
 
     if (data.user) {
       // Ensure user is synced with Prisma DB
-      await syncAppUser(data.user);
+      const appUser = await syncAppUser(data.user);
+
+      // Direct role-based routing on login
+      if (appUser) {
+        if (appUser.role === "ADMIN") {
+          destination = returnUrl && returnUrl.startsWith("/admin") ? returnUrl : "/admin";
+        } else if (appUser.role === "OWNER" || appUser.ownerProfile) {
+          destination = returnUrl && returnUrl.startsWith("/owner") ? returnUrl : "/owner";
+        }
+      }
     }
   } catch (err: unknown) {
     if (err && typeof err === "object" && "digest" in err) {
@@ -238,7 +249,7 @@ export async function loginAction(
 
   // Invalidate router cache and re-evaluate layout/pages with fresh session
   revalidatePath("/", "layout");
-  redirect(returnUrl);
+  redirect(destination);
 }
 
 /**

@@ -60,12 +60,18 @@ export function PropertyCard({
     if (onMouseLeave) onMouseLeave();
   };
 
+  const isFeatured = Boolean(pg.isFeatured || pg.isBoosted);
+
   return (
     <div
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className={`group rounded-2xl border bg-white overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col ${
-        isHovered || isCardHovered
+        isFeatured
+          ? isHovered || isCardHovered
+            ? "border-amber-400 ring-2 ring-amber-300/40 shadow-lg shadow-amber-500/10"
+            : "border-amber-200/90 hover:border-amber-400"
+          : isHovered || isCardHovered
           ? "border-[#00412E] ring-2 ring-[#96BF8A]/30 shadow-md"
           : "border-[#E8EAE5] hover:border-[#96BF8A]"
       }`}
@@ -117,9 +123,10 @@ export function PropertyCard({
         )}
 
         <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 z-10 max-w-[75%]">
-          {pg.isFeatured && (
-            <span className="rounded-full bg-amber-500 text-white px-2 py-0.5 text-[10px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1">
-              ★ Featured
+          {isFeatured && (
+            <span className="rounded-full bg-amber-50/95 backdrop-blur-xs text-amber-900 border border-amber-300/80 px-2.5 py-0.5 text-[10px] font-bold shadow-xs flex items-center gap-1">
+              <span className="text-[11px] leading-none">✨</span>
+              <span>Promoted</span>
             </span>
           )}
           <span

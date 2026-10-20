@@ -116,6 +116,11 @@ async function NewRoommateFormLoader({
       city: true,
       state: true,
       genderPolicy: true,
+      images: {
+        select: { url: true },
+        orderBy: [{ isCover: "desc" }, { sortOrder: "asc" }],
+        take: 1,
+      },
       roomTypes: {
         where: { isActive: true, occupancy: { gt: 1 } },
         select: {
@@ -140,6 +145,7 @@ async function NewRoommateFormLoader({
     city: p.city,
     state: p.state,
     genderPolicy: p.genderPolicy,
+    imageUrl: p.images[0]?.url || null,
     roomTypes: p.roomTypes.map((rt) => ({
       id: rt.id,
       name: rt.name,

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, PlusCircle, Home, User as UserIcon } from "lucide-react";
+import { Menu, PlusCircle, Home, LogOut } from "lucide-react";
+import { logoutAction } from "@/actions/auth";
 
 interface OwnerNavbarProps {
   onOpenMobileMenu: () => void;
@@ -33,7 +34,7 @@ export function OwnerNavbar({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <Link
           href="/owner/onboarding"
           className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-xs"
@@ -50,7 +51,7 @@ export function OwnerNavbar({
           <span>Seeker View</span>
         </Link>
 
-        <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
+        <div className="flex items-center gap-2 border-l border-slate-200 pl-2 sm:pl-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold ring-2 ring-indigo-50">
             {userName ? userName[0].toUpperCase() : userEmail ? userEmail[0].toUpperCase() : "O"}
           </div>
@@ -63,6 +64,17 @@ export function OwnerNavbar({
             </span>
           </div>
         </div>
+
+        <form action={logoutAction} className="pl-1">
+          <button
+            type="submit"
+            title="Sign Out of Owner Hub"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors cursor-pointer shadow-2xs"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        </form>
       </div>
     </header>
   );

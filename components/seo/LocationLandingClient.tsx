@@ -326,10 +326,10 @@ export function LocationLandingClient({
               </p>
             </div>
             <Link
-              href="/owner/properties/new"
+              href="/become-owner"
               className="shrink-0 px-6 py-3 rounded-xl bg-[#96BF8A] text-[#00412E] font-bold text-sm hover:bg-[#a9d19d] transition-all flex items-center gap-2 shadow-md"
             >
-              <span>List Property for Free</span>
+              <span>List Property on StayKro</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

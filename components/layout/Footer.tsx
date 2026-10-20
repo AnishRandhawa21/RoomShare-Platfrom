@@ -5,9 +5,9 @@ export function Footer() {
   return (
     <footer className="border-t border-[#E8EAE5] bg-white text-zinc-600">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand Col */}
-          <div className="md:col-span-2 space-y-3">
+          <div className="sm:col-span-2 lg:col-span-2 space-y-3">
             <Link href="/" className="flex items-center gap-2.5 group">
               <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-white shadow-xs border border-[#E8EAE5] transition-transform group-hover:scale-105">
                 <Image
@@ -25,6 +25,15 @@ export function Footer() {
             <p className="text-sm text-zinc-500 max-w-sm leading-relaxed">
               India&apos;s modern accommodation discovery platform. Find verified PGs, coliving spaces, and compatible roommates with 100% zero brokerage.
             </p>
+            <div className="pt-2">
+              <Link
+                href="/become-owner"
+                className="inline-flex items-center gap-2 text-xs font-semibold text-[#00412E] bg-[#00412E]/5 hover:bg-[#00412E]/10 px-3 py-1.5 rounded-lg transition-colors border border-[#00412E]/15"
+              >
+                <span>Want to list your PG?</span>
+                <span className="font-bold underline">Call/WhatsApp: +91 84930 12280</span>
+              </Link>
+            </div>
           </div>
 
           {/* Top PG Cities */}
@@ -100,10 +109,51 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/owner/properties/new"
+                  href="/become-owner"
+                  className="hover:text-[#00412E] transition-colors font-semibold text-[#00412E]"
+                >
+                  List Your Property (Become Host)
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Policies & Legal */}
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900">
+              Policies & Safety
+            </h4>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              <li>
+                <Link
+                  href="/policies/user"
                   className="hover:text-[#00412E] transition-colors"
                 >
-                  List Your Property (Free)
+                  Tenant Policies & Safety
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/policies/owner"
+                  className="hover:text-[#00412E] transition-colors"
+                >
+                  Owner Policies & Passes
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/policies"
+                  className="hover:text-[#00412E] transition-colors"
+                >
+                  Zero Brokerage Terms
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/become-owner"
+                  className="hover:text-[#00412E] transition-colors"
+                >
+                  Contact Admin for Onboarding
                 </Link>
               </li>
             </ul>
@@ -145,12 +195,15 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-8 pt-6 border-t border-[#E8EAE5] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-400">
           <p>© 2026 StayKro Platform. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <Link href="/#discovery-section" className="hover:text-[#00412E] transition-colors">
-              Privacy & Security
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <Link href="/policies/user" className="hover:text-[#00412E] transition-colors">
+              Tenant Policy
             </Link>
-            <Link href="/#discovery-section" className="hover:text-[#00412E] transition-colors">
-              Verified Stays Guarantee
+            <Link href="/policies/owner" className="hover:text-[#00412E] transition-colors">
+              Owner Listing Terms
+            </Link>
+            <Link href="/become-owner" className="hover:text-[#00412E] transition-colors text-emerald-700 font-semibold">
+              Host Onboarding: +91 84930 12280
             </Link>
           </div>
         </div>

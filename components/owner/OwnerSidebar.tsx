@@ -20,7 +20,9 @@ import {
   Mail,
   Home,
   Star,
+  LogOut,
 } from "lucide-react";
+import { logoutAction } from "@/actions/auth";
 
 interface OwnerSidebarProps {
   pendingEnquiriesCount?: number;
@@ -271,18 +273,31 @@ export function OwnerSidebar({
             <ExternalLink className="h-3 w-3 text-slate-400" />
           </Link>
 
-          <div className="flex items-center gap-2.5 px-2 py-1">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold ring-2 ring-indigo-50">
-              {userName ? userName[0].toUpperCase() : userEmail ? userEmail[0].toUpperCase() : "O"}
+          <div className="flex items-center justify-between gap-2 px-2 py-1">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold ring-2 ring-indigo-50">
+                {userName ? userName[0].toUpperCase() : userEmail ? userEmail[0].toUpperCase() : "O"}
+              </div>
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-xs font-bold text-slate-800 truncate">
+                  {userName || "Property Owner"}
+                </span>
+                <span className="text-[10px] text-slate-400 truncate">
+                  {userEmail || "owner@staykro.in"}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-xs font-bold text-slate-800 truncate">
-                {userName || "Property Owner"}
-              </span>
-              <span className="text-[10px] text-slate-400 truncate">
-                {userEmail || "owner@staykro.in"}
-              </span>
-            </div>
+
+            <form action={logoutAction} className="shrink-0">
+              <button
+                type="submit"
+                title="Sign Out of Owner Hub"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer border border-rose-100"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Exit</span>
+              </button>
+            </form>
           </div>
         </div>
       </aside>

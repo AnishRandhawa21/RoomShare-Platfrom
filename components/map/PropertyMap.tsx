@@ -320,6 +320,8 @@ export function PropertyMap({
           : Infinity;
       const distanceText = distanceKm < Infinity ? formatDistance(distanceKm) : "";
 
+      const isFeatured = Boolean(prop.isFeatured || prop.isBoosted);
+
       const badgeColor =
         prop.genderPolicy === "BOYS"
           ? "#2563eb"
@@ -327,27 +329,37 @@ export function PropertyMap({
           ? "#e11d48"
           : "#00412E";
 
+      // Golden gradient for featured / promoted listings, gender color for standard listings
+      const pillBg = isFeatured
+        ? "linear-gradient(135deg, #b45309 0%, #d97706 45%, #f59e0b 100%)"
+        : badgeColor;
+      const pillBorder = isFeatured ? "2px solid #fef3c7" : "2px solid white";
+
       // Create custom interactive price pill marker DOM element
       const el = document.createElement("div");
-      el.style.cssText = `cursor: pointer; z-index: ${isSelected ? "35" : "20"};`;
+      el.style.cssText = `cursor: pointer; z-index: ${isSelected ? "35" : isFeatured ? "28" : "20"};`;
       el.className = "price-marker-pin group";
 
       const distancePillSnippet = distanceText
-        ? `<span style="opacity: 0.9; font-size: 10px; font-weight: 600; border-left: 1px solid rgba(255,255,255,0.3); padding-left: 5px;">${distanceText}</span>`
+        ? `<span style="opacity: 0.9; font-size: 10px; font-weight: 600; border-left: 1px solid rgba(255,255,255,0.35); padding-left: 5px;">${distanceText}</span>`
         : "";
 
       const inner = document.createElement("div");
       inner.className = "price-pill-inner";
       inner.style.cssText = `
-        background-color: ${badgeColor};
+        background: ${pillBg};
         color: white;
         padding: 5px 10px;
         border-radius: 9999px;
         font-size: 11px;
         font-weight: 800;
         font-family: system-ui, -apple-system, sans-serif;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.3);
-        border: 2px solid white;
+        box-shadow: ${
+          isFeatured
+            ? "0 4px 16px rgba(217, 119, 6, 0.45)"
+            : "0 4px 14px rgba(0,0,0,0.3)"
+        };
+        border: ${pillBorder};
         display: flex;
         align-items: center;
         gap: 5px;
@@ -356,22 +368,32 @@ export function PropertyMap({
         transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.15s ease;
         ${
           isSelected
-            ? "transform: scale(1.15); box-shadow: 0 0 0 4px rgba(0, 65, 46, 0.5), 0 6px 20px rgba(0,0,0,0.4);"
+            ? isFeatured
+              ? "transform: scale(1.15); box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.55), 0 6px 22px rgba(217, 119, 6, 0.55);"
+              : "transform: scale(1.15); box-shadow: 0 0 0 4px rgba(0, 65, 46, 0.5), 0 6px 20px rgba(0,0,0,0.4);"
             : "transform: scale(1);"
         }
       `;
 
-      inner.innerHTML = `
-        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 9999px; background-color: ${
-          prop.genderPolicy === "BOYS"
-            ? "#93c5fd"
-            : prop.genderPolicy === "GIRLS"
-            ? "#fda4af"
-            : "#a1a1aa"
-        };"></span>
-        <span>${priceFormatted}</span>
-        ${distancePillSnippet}
-      `;
+      if (isFeatured) {
+        inner.innerHTML = `
+          <span style="font-size: 11px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));">⭐</span>
+          <span style="font-weight: 900; letter-spacing: -0.2px;">${priceFormatted}</span>
+          ${distancePillSnippet}
+        `;
+      } else {
+        inner.innerHTML = `
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 9999px; background-color: ${
+            prop.genderPolicy === "BOYS"
+              ? "#93c5fd"
+              : prop.genderPolicy === "GIRLS"
+              ? "#fda4af"
+              : "#a1a1aa"
+          };"></span>
+          <span>${priceFormatted}</span>
+          ${distancePillSnippet}
+        `;
+      }
 
       el.appendChild(inner);
 
@@ -380,14 +402,20 @@ export function PropertyMap({
       el.addEventListener("mouseenter", () => {
         el.style.zIndex = "40";
         inner.style.transform = isSelected ? "scale(1.2)" : "scale(1.1)";
-        inner.style.boxShadow = "0 6px 22px rgba(0,0,0,0.4)";
+        inner.style.boxShadow = isFeatured
+          ? "0 8px 24px rgba(217, 119, 6, 0.65)"
+          : "0 6px 22px rgba(0,0,0,0.4)";
       });
 
       el.addEventListener("mouseleave", () => {
-        el.style.zIndex = isSelected ? "35" : "20";
+        el.style.zIndex = isSelected ? "35" : isFeatured ? "28" : "20";
         inner.style.transform = isSelected ? "scale(1.15)" : "scale(1)";
         inner.style.boxShadow = isSelected
-          ? "0 0 0 4px rgba(99, 102, 241, 0.6), 0 6px 20px rgba(0,0,0,0.4)"
+          ? isFeatured
+            ? "0 0 0 4px rgba(245, 158, 11, 0.55), 0 6px 22px rgba(217, 119, 6, 0.55)"
+            : "0 0 0 4px rgba(0, 65, 46, 0.5), 0 6px 20px rgba(0,0,0,0.4)"
+          : isFeatured
+          ? "0 4px 16px rgba(217, 119, 6, 0.45)"
           : "0 4px 14px rgba(0,0,0,0.3)";
       });
 

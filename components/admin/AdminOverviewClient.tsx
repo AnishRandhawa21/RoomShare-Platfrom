@@ -25,6 +25,7 @@ interface OverviewData {
     pendingReports: number;
     revenueInr: number;
     activeSubscriptions: number;
+    activeBoosts?: number;
   };
   recentActivities: {
     recentOwners: any[];
@@ -93,11 +94,18 @@ export function AdminOverviewClient({ data }: { data: OverviewData }) {
       href: "/admin/payments",
     },
     {
-      title: "Active Subscriptions",
+      title: "Active Listing Passes",
       value: stats.activeSubscriptions.toLocaleString("en-IN"),
       icon: Layers,
       color: "text-teal-600 bg-teal-50 border-teal-200",
       href: "/admin/subscriptions",
+    },
+    {
+      title: "Active Featured Listings",
+      value: (stats.activeBoosts ?? 0).toLocaleString("en-IN"),
+      icon: Sparkles,
+      color: "text-amber-600 bg-amber-50 border-amber-200",
+      href: "/admin/featured",
     },
   ];
 
@@ -130,8 +138,8 @@ export function AdminOverviewClient({ data }: { data: OverviewData }) {
         </div>
       </div>
 
-      {/* 8 Real Database-Backed Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Real Database-Backed Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (

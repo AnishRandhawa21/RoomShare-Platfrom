@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Menu, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Menu, ShieldCheck, LogOut } from "lucide-react";
+import { logoutAction } from "@/actions/auth";
 
 interface AdminNavbarProps {
   onToggleMobileSidebar: () => void;
@@ -37,7 +38,7 @@ export function AdminNavbar({ onToggleMobileSidebar, adminUser }: AdminNavbarPro
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Back to Public Site link */}
         <Link
           href="/"
@@ -62,6 +63,18 @@ export function AdminNavbar({ onToggleMobileSidebar, adminUser }: AdminNavbarPro
             </span>
           </div>
         </div>
+
+        {/* Sign Out Button */}
+        <form action={logoutAction} className="pl-1">
+          <button
+            type="submit"
+            title="Sign Out of Admin Portal"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer shadow-2xs"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        </form>
       </div>
     </header>
   );

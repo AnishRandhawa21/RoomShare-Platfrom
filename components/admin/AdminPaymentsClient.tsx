@@ -24,7 +24,7 @@ interface PaymentRow {
   };
   ownerSubscription: {
     id: string;
-    plan: { name: string; billingCycle: string };
+    plan: { name: string; billingCycle?: string; interval?: string };
   } | null;
   featuredListing: {
     id: string;
@@ -204,7 +204,7 @@ export function AdminPaymentsClient({
                               {p.ownerSubscription.plan.name}
                             </span>
                             <span className="text-[11px] text-slate-400 block">
-                              Cycle: {p.ownerSubscription.plan.billingCycle}
+                              Cycle: {p.ownerSubscription.plan.interval || p.ownerSubscription.plan.billingCycle || "Monthly"}
                             </span>
                           </div>
                         ) : p.featuredListing ? (

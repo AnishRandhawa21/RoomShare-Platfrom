@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   PlusCircle,
@@ -16,6 +17,8 @@ import {
 } from "lucide-react";
 import { PropertyStatus } from "@/lib/enums";
 import { togglePropertyStatusAction } from "@/actions/owner";
+import { PromotePropertyModal } from "@/components/property/PromotePropertyModal";
+import { SubscriptionPaywallModal } from "@/components/owner/SubscriptionPaywallModal";
 
 interface PropertyItem {
   id: string;
@@ -45,12 +48,15 @@ interface PropertyItem {
 interface OwnerPropertiesListProps {
   initialProperties: PropertyItem[];
   hasOwnerProfile: boolean;
+  entitlement?: any | null;
 }
 
 export function OwnerPropertiesList({
   initialProperties,
   hasOwnerProfile,
+  entitlement,
 }: OwnerPropertiesListProps) {
+  const router = useRouter();
   const [properties, setProperties] = useState<PropertyItem[]>(initialProperties);
   const [prevInitial, setPrevInitial] = useState(initialProperties);
 
@@ -62,6 +68,11 @@ export function OwnerPropertiesList({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Modals for Boosting and Subscription Paywall
+  const [promoteTarget, setPromoteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [paywallEntitlement, setPaywallEntitlement] = useState<any>(null);
 
   // Compute aggregated KPI totals
   const totalProperties = properties.length;
@@ -97,7 +108,20 @@ export function OwnerPropertiesList({
       setProperties((prev) =>
         prev.map((p) => (p.id === propertyId ? { ...p, status: res.status as PropertyStatus } : p))
       );
+    } else if ((res as any).limitReached) {
+      setPaywallEntitlement((res as any).entitlement);
+      setIsPaywallOpen(true);
     }
+  };
+
+  const handleAddPropertyClick = (e: React.MouseEvent) => {
+    if (entitlement && !entitlement.canPublish) {
+      e.preventDefault();
+      setPaywallEntitlement(entitlement);
+      setIsPaywallOpen(true);
+      return;
+    }
+    router.push("/owner/onboarding");
   };
 
   if (!hasOwnerProfile || totalProperties === 0) {
@@ -118,13 +142,14 @@ export function OwnerPropertiesList({
           vacancies in real-time.
         </p>
         <div className="mt-6">
-          <Link
-            href="/owner/onboarding"
-            className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all"
+          <button
+            type="button"
+            onClick={handleAddPropertyClick}
+            className="inline-flex items-center gap-2 rounded-full bg-[#00412E] hover:bg-[#002f21] px-6 py-3 text-sm font-bold text-white shadow-md shadow-[#00412E]/10 transition-all cursor-pointer"
           >
-            <PlusCircle className="h-4 w-4" />
+            <PlusCircle className="h-4 w-4 text-[#96BF8A]" />
             <span>Onboard Your First PG</span>
-          </Link>
+          </button>
         </div>
       </div>
     );
@@ -142,13 +167,14 @@ export function OwnerPropertiesList({
             Monitor real-time room occupancy and manage your live bed inventory across all PGs.
           </p>
         </div>
-        <Link
-          href="/owner/onboarding"
-          className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all self-start sm:self-auto"
+        <button
+          type="button"
+          onClick={handleAddPropertyClick}
+          className="inline-flex items-center gap-2 rounded-full bg-[#00412E] hover:bg-[#002f21] px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-[#00412E]/10 transition-all self-start sm:self-auto cursor-pointer"
         >
-          <PlusCircle className="h-4 w-4" />
+          <PlusCircle className="h-4 w-4 text-[#96BF8A]" />
           <span>Add New Property</span>
-        </Link>
+        </button>
       </div>
 
       {/* KPI Stats Cards */}
@@ -349,8 +375,8 @@ export function OwnerPropertiesList({
               </div>
             </div>
 
-            {/* Action Buttons: Clean balanced 3-column grid */}
-            <div className="mt-5 pt-3.5 border-t border-zinc-100 grid grid-cols-3 gap-2">
+            {/* Action Buttons: Clean balanced grid */}
+            <div className="mt-5 pt-3.5 border-t border-zinc-100 grid grid-cols-2 sm:grid-cols-4 gap-2">
               <Link
                 href={`/owner/properties/${property.id}/reviews`}
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 py-2.5 text-xs font-bold transition-colors shadow-2xs"
@@ -371,9 +397,23 @@ export function OwnerPropertiesList({
 
               <button
                 type="button"
+                onClick={() => setPromoteTarget({ id: property.id, name: property.name })}
+                className="inline-flex items-center justify-center gap-1 rounded-xl border border-[#96BF8A]/50 bg-[#eff4ec] hover:bg-[#dce8d6] text-[#00412E] py-2.5 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                title="Promote property with priority visibility boost"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-[#00412E] shrink-0" />
+                <span>Promote</span>
+              </button>
+
+              <button
+                type="button"
                 disabled={updatingId === property.id}
                 onClick={() => handleToggleStatus(property.id, property.status)}
-                className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 py-2.5 text-xs font-semibold text-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
+                className={`inline-flex items-center justify-center rounded-xl py-2.5 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${
+                  property.status === PropertyStatus.PUBLISHED
+                    ? "border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700"
+                    : "bg-[#00412E] hover:bg-[#002d20] text-white font-bold shadow-xs"
+                }`}
                 title="Toggle Published / Draft Status"
               >
                 {property.status === PropertyStatus.PUBLISHED ? "Unpublish" : "Publish"}
@@ -382,6 +422,30 @@ export function OwnerPropertiesList({
           </div>
         ))}
       </div>
+
+      {/* Promote Property Modal */}
+      {promoteTarget && (
+        <PromotePropertyModal
+          propertyId={promoteTarget.id}
+          propertyName={promoteTarget.name}
+          isOpen={true}
+          onClose={() => setPromoteTarget(null)}
+          onSuccess={() => {
+            setPromoteTarget(null);
+          }}
+        />
+      )}
+
+      {/* Subscription Limit Paywall Modal */}
+      <SubscriptionPaywallModal
+        isOpen={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        entitlement={paywallEntitlement}
+        onSuccess={() => {
+          setIsPaywallOpen(false);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

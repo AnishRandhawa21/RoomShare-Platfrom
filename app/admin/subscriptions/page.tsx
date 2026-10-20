@@ -3,21 +3,26 @@ import { requireAdmin } from "@/lib/auth/session";
 import { getAdminSubscriptionsAction } from "@/actions/admin";
 import { AdminSubscriptionsClient } from "@/components/admin/AdminSubscriptionsClient";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata = {
-  title: "Owner Subscriptions | Admin Portal",
-  description: "Monitor platform subscription memberships, recurring cycles, and owner tiers.",
+  title: "Listing Passes & Licenses | Admin Portal",
+  description: "Monitor 30-day listing passes, property publishing allowances, and license expirations.",
 };
 
 interface AdminSubscriptionsPageProps {
   searchParams: Promise<{
     page?: string;
+    filter?: string;
+    q?: string;
   }>;
 }
 
 async function SubscriptionsLoader({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; filter?: string; q?: string }>;
 }) {
   await requireAdmin("/admin/subscriptions");
   const params = await searchParams;
@@ -25,12 +30,14 @@ async function SubscriptionsLoader({
   const res = await getAdminSubscriptionsAction({
     page: parseInt(params.page || "1", 10),
     limit: 15,
+    filter: params.filter as any,
+    search: params.q,
   });
 
   if (!res.success || !res.data) {
     return (
       <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center text-xs font-semibold text-rose-700">
-        {res.error || "Failed to load owner subscriptions."}
+        {res.error || "Failed to load owner listing passes."}
       </div>
     );
   }
@@ -41,6 +48,7 @@ async function SubscriptionsLoader({
       total={res.data.total}
       currentPage={res.data.page}
       totalPages={res.data.totalPages}
+      counts={res.data.counts}
     />
   );
 }

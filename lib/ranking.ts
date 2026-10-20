@@ -24,6 +24,7 @@ export interface RankableProperty {
   isVerified?: boolean;
   isOwnerVerified?: boolean;
   isFeatured?: boolean;
+  isBoosted?: boolean;
   rating?: number;
   reviewCount?: number;
   amenitiesCount?: number;
@@ -182,10 +183,10 @@ export function calculatePropertyRankingScore(
   }
 
   // -------------------------------------------------------------
-  // 6. SPONSORED / FEATURED BOOST (Bonus +15 pts)
+  // 6. SPONSORED / FEATURED BOOST (High Priority Bonus)
   // -------------------------------------------------------------
-  if (property.isFeatured) {
-    score += 15;
+  if (property.isFeatured || property.isBoosted) {
+    score += 50;
   }
 
   return score;
@@ -228,8 +229,18 @@ export function rankProperties<T extends RankableProperty>(
   });
 
   scored.sort((a, b) => {
+    const isFeaturedA = Boolean(a.property.isFeatured || a.property.isBoosted);
+    const isFeaturedB = Boolean(b.property.isFeatured || b.property.isBoosted);
+
     if (sortBy === "nearest") {
-      return (a.property.distanceKm ?? Infinity) - (b.property.distanceKm ?? Infinity);
+      // 1. Featured / promoted PGs always stay on top
+      if (isFeaturedA && !isFeaturedB) return -1;
+      if (!isFeaturedA && isFeaturedB) return 1;
+
+      // 2. Within the same group (both featured or both regular), sort by distance (closest first)
+      const distA = a.property.distanceKm ?? Infinity;
+      const distB = b.property.distanceKm ?? Infinity;
+      return distA - distB;
     }
 
     if (sortBy === "price-asc") {
@@ -253,6 +264,8 @@ export function rankProperties<T extends RankableProperty>(
     }
 
     // Default: "recommended" (Best Match Ranking Heuristic)
+    if (isFeaturedA && !isFeaturedB) return -1;
+    if (!isFeaturedA && isFeaturedB) return 1;
     return b.rankingScore - a.rankingScore;
   });
 

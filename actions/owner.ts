@@ -4,6 +4,7 @@ import { prisma, Role, PropertyStatus, RoomOperationalStatus, GenderPolicy, Food
 import { EnquiryStatus, RoommateRequestStatus } from "@/lib/enums";
 import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
+import { getOwnerPublishingEntitlement } from "@/lib/billing-entitlements";
 
 // Utility for URL-friendly slugs
 function generateSlug(name: string, locality: string): string {
@@ -189,6 +190,24 @@ export async function createPropertyAction(input: CreatePropertyInput) {
       ? Math.min(...input.roomTypes.map((rt) => rt.monthlyRent))
       : null;
 
+    const entitlement = await getOwnerPublishingEntitlement(ownerProfile.id);
+    if (!entitlement.canPublish) {
+      return {
+        success: false,
+        limitReached: true,
+        error:
+          entitlement.reason ||
+          "You have reached the property limit for your current subscription plan. Upgrade to StayKro Plus to list and publish more properties.",
+        entitlement: {
+          publishedCount: entitlement.publishedCount,
+          allowedCount: entitlement.allowedCount,
+          planName: entitlement.activePlan?.name || "StayKro Solo",
+        },
+      };
+    }
+
+    const initialStatus = PropertyStatus.PUBLISHED;
+
     const property = await prisma.$transaction(async (tx) => {
       // 1. Create Property
       const newProperty = await tx.property.create({
@@ -198,7 +217,7 @@ export async function createPropertyAction(input: CreatePropertyInput) {
           slug,
           propertyType: input.propertyType || PropertyType.PG,
           genderPolicy: input.genderPolicy || GenderPolicy.UNISEX,
-          status: input.status || PropertyStatus.PUBLISHED,
+          status: initialStatus,
           description: input.description.trim(),
           addressLine1: input.addressLine1.trim(),
           addressLine2: input.addressLine2?.trim() || null,
@@ -759,6 +778,18 @@ export async function togglePropertyStatusAction(
 
     if (!property) {
       return { success: false, error: "Property not found or unauthorized." };
+    }
+
+    if (newStatus === PropertyStatus.PUBLISHED) {
+      const entitlement = await getOwnerPublishingEntitlement(ownerProfile.id, propertyId);
+      if (!entitlement.canPublish) {
+        return {
+          success: false,
+          error: entitlement.reason || "Your subscription property limit has been reached. Please upgrade to publish this property.",
+          limitReached: true,
+          entitlement,
+        };
+      }
     }
 
     const updated = await prisma.property.update({

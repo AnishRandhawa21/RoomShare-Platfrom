@@ -198,7 +198,7 @@ export function AuthFormPanel({
                 htmlFor="login-identifier"
                 className="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1.5"
               >
-                Email or phone
+                Email
               </label>
               <div className="relative rounded-2xl border border-[#E8EAE5] bg-[#E8EAE5]/30 focus-within:border-[#00412E] focus-within:bg-white focus-within:ring-1 focus-within:ring-[#00412E] transition-all">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -210,7 +210,7 @@ export function AuthFormPanel({
                   type="text"
                   autoComplete="username"
                   required
-                  placeholder="name@example.com or 9876543210"
+                  placeholder="name@example.com"
                   className="block w-full rounded-2xl bg-transparent py-3 pl-10 pr-4 text-sm font-semibold text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
                 />
               </div>
@@ -352,7 +352,7 @@ export function AuthFormPanel({
                   name="phone"
                   type="tel"
                   autoComplete="tel"
-                  placeholder="+91 98765 43210"
+                  placeholder="9876543210"
                   className="block w-full rounded-2xl bg-transparent py-2.5 pl-10 pr-4 text-sm font-semibold text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
                 />
               </div>

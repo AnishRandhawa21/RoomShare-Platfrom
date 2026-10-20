@@ -288,7 +288,7 @@ export function Header({
           </Link>
 
           {/* Role-gated owner and admin links */}
-          {currentUser && (currentUser.role === "OWNER" || currentUser.role === "ADMIN") && (
+          {currentUser && currentUser.role === "OWNER" && (
             <Link
               href="/owner/properties"
               className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-bold text-[#00412E] bg-[#eff4ec] hover:bg-[#dce7d8] rounded-full transition-all whitespace-nowrap border border-[#96BF8A]/40"
@@ -300,11 +300,11 @@ export function Header({
 
           {currentUser && currentUser.role === "ADMIN" && (
             <Link
-              href="/admin/invitations"
+              href="/admin"
               className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-bold text-rose-700 bg-rose-50/80 hover:bg-rose-100 rounded-full transition-all whitespace-nowrap border border-rose-200"
             >
               <ShieldCheck className="h-4 w-4 text-rose-600 shrink-0" />
-              <span>Admin</span>
+              <span>Admin Dashboard</span>
             </Link>
           )}
         </nav>
@@ -457,7 +457,7 @@ export function Header({
               <span>My Saved Listings</span>
             </Link>
 
-            {currentUser && (currentUser.role === "OWNER" || currentUser.role === "ADMIN") && (
+            {currentUser && currentUser.role === "OWNER" && (
               <Link
                 href="/owner/properties"
                 onClick={() => setMobileMenuOpen(false)}
@@ -470,12 +470,12 @@ export function Header({
 
             {currentUser && currentUser.role === "ADMIN" && (
               <Link
-                href="/admin/invitations"
+                href="/admin"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50/60 hover:bg-rose-100"
               >
                 <ShieldCheck className="h-4 w-4 text-rose-600" />
-                <span>Admin Panel (Owner Invites)</span>
+                <span>Admin Dashboard</span>
               </Link>
             )}
           </div>

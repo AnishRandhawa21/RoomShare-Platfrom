@@ -25,6 +25,7 @@ export interface PropertyListingSummary {
   isVerified?: boolean;
   isOwnerVerified?: boolean;
   isFeatured?: boolean;
+  isBoosted?: boolean;
   rating?: number;
   reviewCount?: number;
   amenitiesCount?: number;
@@ -107,6 +108,11 @@ export async function getLiveProperties(params?: {
         featuredListings: {
           where: { endDate: { gt: new Date() }, status: "ACTIVE" },
           select: { id: true },
+          take: 1,
+        },
+        boosts: {
+          where: { endDate: { gt: new Date() }, status: "ACTIVE" },
+          select: { id: true, boostType: true },
           take: 1,
         },
         amenities: {
@@ -211,7 +217,8 @@ export async function getLiveProperties(params?: {
         // Quality signals
         isVerified: p.isVerified,
         isOwnerVerified: p.owner?.verificationStatus === "VERIFIED",
-        isFeatured: p.featuredListings && p.featuredListings.length > 0,
+        isFeatured: (p.featuredListings && p.featuredListings.length > 0) || (p.boosts && p.boosts.length > 0),
+        isBoosted: Boolean(p.boosts && p.boosts.length > 0),
         rating: avgRating,
         reviewCount: p.reviews.length,
         amenitiesCount: p.amenities.length,

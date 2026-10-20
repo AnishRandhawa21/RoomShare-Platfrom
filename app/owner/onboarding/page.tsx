@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getCatalogAmenitiesAction } from "@/actions/owner";
 import { OnboardingWizard } from "@/components/owner/OnboardingWizard";
+import { OnboardingPaywallGate } from "@/components/owner/OnboardingPaywallGate";
+import { getOwnerPublishingEntitlement } from "@/lib/billing-entitlements";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
@@ -20,6 +22,14 @@ async function OnboardingDataLoader() {
   const ownerProfile = await prisma.ownerProfile.findUnique({
     where: { userId: user.id },
   });
+
+  // If owner already exists, enforce plan property quota
+  if (ownerProfile) {
+    const entitlement = await getOwnerPublishingEntitlement(ownerProfile.id);
+    if (!entitlement.canPublish) {
+      return <OnboardingPaywallGate entitlement={entitlement} />;
+    }
+  }
 
   const [amenitiesRes, locationsRes] = await Promise.all([
     getCatalogAmenitiesAction(),

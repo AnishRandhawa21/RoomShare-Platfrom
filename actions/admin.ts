@@ -81,6 +81,7 @@ export async function getAdminOverviewStatsAction(): Promise<
       pendingReports: number;
       revenueInr: number;
       activeSubscriptions: number;
+      activeBoosts: number;
     };
     recentActivities: {
       recentOwners: any[];
@@ -104,6 +105,7 @@ export async function getAdminOverviewStatsAction(): Promise<
       pendingReports,
       revenueResult,
       activeSubscriptions,
+      activeBoosts,
       recentOwners,
       recentProperties,
       recentRoommates,
@@ -121,7 +123,12 @@ export async function getAdminOverviewStatsAction(): Promise<
         _sum: { amount: true },
         where: { status: "CAPTURED" },
       }),
-      prisma.ownerSubscription.count({ where: { status: "ACTIVE" } }),
+      prisma.ownerListingPass.count({
+        where: { status: "ACTIVE", expiresAt: { gte: new Date() } },
+      }),
+      prisma.propertyBoost.count({
+        where: { status: "ACTIVE", endDate: { gte: new Date() } },
+      }),
       // Recent owners
       prisma.ownerProfile.findMany({
         take: 5,
@@ -211,6 +218,7 @@ export async function getAdminOverviewStatsAction(): Promise<
           pendingReports,
           revenueInr: revenueResult._sum.amount || 0,
           activeSubscriptions,
+          activeBoosts,
         },
         recentActivities: {
           recentOwners,
@@ -1384,6 +1392,9 @@ export async function getAdminPaymentsAction(params: {
           ownerSubscription: {
             include: { plan: true },
           },
+          ownerListingPass: {
+            include: { owner: { select: { id: true, businessName: true } } },
+          },
           featuredListing: true,
         },
       }),
@@ -1404,12 +1415,14 @@ export async function getAdminPaymentsAction(params: {
 }
 
 // ==============================================================================
-// 10. SUBSCRIPTIONS
+// 10. LISTING PASSES & LICENSES
 // ==============================================================================
 
-export async function getAdminSubscriptionsAction(params: {
+export async function getAdminListingPassesAction(params: {
   page?: number;
   limit?: number;
+  filter?: "ALL" | "ACTIVE" | "EXPIRING_SOON" | "EXPIRED" | "SOLO" | "PLUS";
+  search?: string;
 }) {
   try {
     await requireAdminContext();
@@ -1417,18 +1430,261 @@ export async function getAdminSubscriptionsAction(params: {
     const page = Math.max(1, params.page || 1);
     const limit = Math.max(1, Math.min(100, params.limit || 15));
     const skip = (page - 1) * limit;
+    const now = new Date();
+    const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    const [total, subscriptions] = await Promise.all([
-      prisma.ownerSubscription.count(),
-      prisma.ownerSubscription.findMany({
+    const where: any = {};
+
+    if (params.filter === "ACTIVE") {
+      where.status = "ACTIVE";
+      where.expiresAt = { gte: now };
+    } else if (params.filter === "EXPIRING_SOON") {
+      where.status = "ACTIVE";
+      where.expiresAt = { gte: now, lte: in7Days };
+    } else if (params.filter === "EXPIRED") {
+      where.OR = [
+        { status: "EXPIRED" },
+        { expiresAt: { lt: now } },
+      ];
+    } else if (params.filter === "SOLO") {
+      where.planType = "SOLO";
+    } else if (params.filter === "PLUS") {
+      where.planType = "PLUS";
+    }
+
+    if (params.search && params.search.trim()) {
+      const q = params.search.trim();
+      const searchConditions = [
+        { owner: { businessName: { contains: q, mode: "insensitive" } } },
+        { owner: { user: { email: { contains: q, mode: "insensitive" } } } },
+        { owner: { user: { profile: { fullName: { contains: q, mode: "insensitive" } } } } },
+        { razorpayOrderId: { contains: q, mode: "insensitive" } },
+        { razorpayPaymentId: { contains: q, mode: "insensitive" } },
+      ];
+
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: searchConditions },
+        ];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
+    }
+
+    const [
+      filteredTotal,
+      allTotal,
+      passes,
+      activeCount,
+      expiredCount,
+      expiringSoonCount,
+      soloCount,
+      plusCount,
+    ] = await Promise.all([
+      prisma.ownerListingPass.count({ where }),
+      prisma.ownerListingPass.count({}),
+      prisma.ownerListingPass.findMany({
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          plan: true,
           owner: {
             include: {
               user: { select: { email: true, profile: { select: { fullName: true } } } },
+              _count: { select: { properties: { where: { deletedAt: null } } } },
+            },
+          },
+          payments: {
+            take: 1,
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      }),
+      prisma.ownerListingPass.count({ where: { status: "ACTIVE", expiresAt: { gte: now } } }),
+      prisma.ownerListingPass.count({ where: { OR: [{ status: "EXPIRED" }, { expiresAt: { lt: now } }] } }),
+      prisma.ownerListingPass.count({ where: { status: "ACTIVE", expiresAt: { gte: now, lte: in7Days } } }),
+      prisma.ownerListingPass.count({ where: { planType: "SOLO" } }),
+      prisma.ownerListingPass.count({ where: { planType: "PLUS" } }),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        passes,
+        total: filteredTotal,
+        page,
+        totalPages: Math.ceil(filteredTotal / limit),
+        counts: {
+          total: allTotal,
+          active: activeCount,
+          expired: expiredCount,
+          expiringSoon: expiringSoonCount,
+          solo: soloCount,
+          plus: plusCount,
+        },
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to load listing passes." };
+  }
+}
+
+export async function getAdminSubscriptionsAction(params: {
+  page?: number;
+  limit?: number;
+  filter?: any;
+  search?: string;
+}) {
+  const result = await getAdminListingPassesAction(params);
+  if (!result.success || !result.data) {
+    return result as any;
+  }
+  const now = new Date();
+  return {
+    success: true,
+    data: {
+      subscriptions: result.data.passes.map((pass: any) => {
+        const isUpgraded = pass.status === "EXPIRED" && new Date(pass.expiresAt) > now;
+        const status = isUpgraded
+          ? "UPGRADED"
+          : pass.status === "ACTIVE" && new Date(pass.expiresAt) < now
+          ? "EXPIRED"
+          : pass.status;
+
+        return {
+          id: pass.id,
+          status,
+          isUpgraded,
+          startDate: pass.startsAt,
+          endDate: pass.expiresAt,
+          autoRenew: false,
+          cancelledAt: null,
+          createdAt: pass.createdAt,
+          propertyLimit: pass.propertyLimit,
+          planType: pass.planType,
+          plan: {
+            id: pass.id,
+            name: pass.planType === "PLUS" ? "StayKro Plus Listing Pass" : "StayKro Solo Listing Pass",
+            priceInr: pass.amount,
+            maxProperties: pass.propertyLimit,
+            billingCycle: "30-Day License",
+            interval: "30-Day License",
+          },
+          owner: pass.owner,
+          payments: pass.payments,
+        };
+      }),
+      passes: result.data.passes,
+      counts: result.data.counts,
+      total: result.data.total,
+      page: result.data.page,
+      totalPages: result.data.totalPages,
+    },
+  };
+}
+
+/**
+ * Returns complete monetization and billing intelligence for the admin panel.
+ */
+export async function getAdminBillingDashboardAction() {
+  try {
+    await requireAdminContext();
+
+    const now = new Date();
+    const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      activePassesCount,
+      expiredPassesCount,
+      upcomingExpirationsCount,
+      failedPaymentsCount,
+      totalRevenueAggregate,
+      soloCount,
+      plusCount,
+      activeBoostsCount,
+      recentTransactions,
+      recentBoosts,
+      listingPassesList,
+    ] = await Promise.all([
+      prisma.ownerListingPass.count({ where: { status: "ACTIVE", expiresAt: { gte: now } } }),
+      prisma.ownerListingPass.count({
+        where: {
+          OR: [{ status: "EXPIRED" }, { expiresAt: { lt: now } }],
+        },
+      }),
+      prisma.ownerListingPass.count({
+        where: {
+          status: "ACTIVE",
+          expiresAt: { gte: now, lte: in7Days },
+        },
+      }),
+      prisma.payment.count({ where: { status: "FAILED" } }),
+      prisma.payment.aggregate({
+        _sum: { amount: true },
+        where: { status: "CAPTURED" },
+      }),
+      prisma.ownerListingPass.count({
+        where: { planType: "SOLO" },
+      }),
+      prisma.ownerListingPass.count({
+        where: { planType: "PLUS" },
+      }),
+      prisma.propertyBoost.count({
+        where: { status: "ACTIVE", endDate: { gte: now } },
+      }),
+      prisma.payment.findMany({
+        take: 20,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            select: { email: true, profile: { select: { fullName: true } } },
+          },
+          ownerSubscription: {
+            include: {
+              plan: true,
+              owner: {
+                select: { id: true, businessName: true },
+              },
+            },
+          },
+          ownerListingPass: {
+            include: {
+              owner: {
+                select: { id: true, businessName: true },
+              },
+            },
+          },
+          propertyBoost: {
+            include: {
+              property: { select: { name: true, slug: true } },
+              owner: { select: { id: true, businessName: true } },
+            },
+          },
+        },
+      }),
+      prisma.propertyBoost.findMany({
+        take: 15,
+        orderBy: { createdAt: "desc" },
+        include: {
+          property: { select: { id: true, name: true, slug: true, city: true } },
+          owner: {
+            include: {
+              user: { select: { email: true, profile: { select: { fullName: true } } } },
+            },
+          },
+        },
+      }),
+      prisma.ownerListingPass.findMany({
+        take: 30,
+        orderBy: { createdAt: "desc" },
+        include: {
+          owner: {
+            include: {
+              user: { select: { email: true, profile: { select: { fullName: true } } } },
+              _count: { select: { properties: { where: { deletedAt: null } } } },
             },
           },
           payments: {
@@ -1442,14 +1698,45 @@ export async function getAdminSubscriptionsAction(params: {
     return {
       success: true,
       data: {
-        subscriptions,
-        total,
-        page,
-        totalPages: Math.ceil(total / limit),
+        activePassesCount,
+        expiredPassesCount,
+        upcomingExpirationsCount,
+        activeSubscriptionsCount: activePassesCount,
+        cancelledSubscriptionsCount: expiredPassesCount,
+        failedPaymentsCount,
+        totalRevenueInr: totalRevenueAggregate._sum.amount || 0,
+        planDistribution: {
+          solo: soloCount,
+          plus: plusCount,
+        },
+        activeBoostsCount,
+        recentTransactions,
+        recentBoosts,
+        listingPassesList,
+        subscriptionsList: listingPassesList.map((pass: any) => ({
+          id: pass.id,
+          status: pass.status === "ACTIVE" && new Date(pass.expiresAt) < now ? "EXPIRED" : pass.status,
+          startDate: pass.startsAt,
+          endDate: pass.expiresAt,
+          autoRenew: false,
+          cancelledAt: null,
+          createdAt: pass.createdAt,
+          plan: {
+            id: pass.id,
+            name: pass.planType === "PLUS" ? "StayKro Plus Listing Pass" : "StayKro Solo Listing Pass",
+            priceInr: pass.amount,
+            maxProperties: pass.propertyLimit,
+            billingCycle: "30-Day License",
+            interval: "30-Day License",
+          },
+          owner: pass.owner,
+          payments: pass.payments,
+        })),
       },
     };
   } catch (err: any) {
-    return { success: false, error: err.message || "Failed to load subscriptions." };
+    console.error("getAdminBillingDashboardAction error:", err);
+    return { success: false, error: err?.message || "Failed to load admin billing data." };
   }
 }
 
@@ -1460,6 +1747,8 @@ export async function getAdminSubscriptionsAction(params: {
 export async function getAdminFeaturedListingsAction(params: {
   page?: number;
   limit?: number;
+  filter?: "ALL" | "ACTIVE" | "EXPIRED" | "CANCELLED";
+  search?: string;
 }) {
   try {
     await requireAdminContext();
@@ -1467,17 +1756,89 @@ export async function getAdminFeaturedListingsAction(params: {
     const page = Math.max(1, params.page || 1);
     const limit = Math.max(1, Math.min(100, params.limit || 15));
     const skip = (page - 1) * limit;
+    const now = new Date();
 
-    const [total, featured] = await Promise.all([
-      prisma.featuredListing.count(),
-      prisma.featuredListing.findMany({
+    const boostWhere: any = {};
+    if (params.filter === "ACTIVE") {
+      boostWhere.status = "ACTIVE";
+      boostWhere.endDate = { gte: now };
+    } else if (params.filter === "EXPIRED") {
+      boostWhere.OR = [
+        { status: "EXPIRED" },
+        { endDate: { lt: now } },
+      ];
+    } else if (params.filter === "CANCELLED") {
+      boostWhere.status = "CANCELLED";
+    }
+
+    if (params.search?.trim()) {
+      const q = params.search.trim();
+      const searchOR = [
+        { property: { name: { contains: q, mode: "insensitive" } } },
+        { property: { city: { contains: q, mode: "insensitive" } } },
+        { property: { locality: { contains: q, mode: "insensitive" } } },
+        { owner: { user: { email: { contains: q, mode: "insensitive" } } } },
+        { razorpayPaymentId: { contains: q, mode: "insensitive" } },
+      ];
+      if (boostWhere.OR) {
+        boostWhere.AND = [{ OR: boostWhere.OR }, { OR: searchOR }];
+        delete boostWhere.OR;
+      } else {
+        boostWhere.OR = searchOR;
+      }
+    }
+
+    const [
+      filteredBoostsCount,
+      allBoostsCount,
+      activeBoostsCount,
+      expiredBoostsCount,
+      cancelledBoostsCount,
+      boostsRevenueResult,
+      boosts,
+      legacyFeatured,
+    ] = await Promise.all([
+      prisma.propertyBoost.count({ where: boostWhere }),
+      prisma.propertyBoost.count({}),
+      prisma.propertyBoost.count({ where: { status: "ACTIVE", endDate: { gte: now } } }),
+      prisma.propertyBoost.count({ where: { OR: [{ status: "EXPIRED" }, { endDate: { lt: now } }] } }),
+      prisma.propertyBoost.count({ where: { status: "CANCELLED" } }),
+      prisma.propertyBoost.aggregate({
+        _sum: { amountInr: true },
+        where: { status: "ACTIVE" },
+      }),
+      prisma.propertyBoost.findMany({
+        where: boostWhere,
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
+          property: {
+            select: { id: true, name: true, slug: true, city: true, locality: true },
+          },
+          owner: {
+            include: {
+              user: {
+                select: {
+                  email: true,
+                  profile: { select: { fullName: true } },
+                },
+              },
+            },
+          },
+          payments: {
+            take: 1,
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      }),
+      prisma.featuredListing.findMany({
+        take: 15,
+        orderBy: { createdAt: "desc" },
+        include: {
           pricingPlan: true,
           property: {
-            select: { id: true, name: true, slug: true, city: true },
+            select: { id: true, name: true, slug: true, city: true, locality: true },
           },
           roomType: {
             select: { id: true, name: true },
@@ -1486,16 +1847,79 @@ export async function getAdminFeaturedListingsAction(params: {
       }),
     ]);
 
+    // Map PropertyBoost records to standardized featured row format
+    const mappedBoosts = boosts.map((boost) => {
+      const isExpired = boost.endDate && new Date(boost.endDate) < now;
+      const effectiveStatus =
+        boost.status === "ACTIVE" && isExpired
+          ? "EXPIRED"
+          : (boost.status as any);
+
+      return {
+        id: boost.id,
+        isBoost: true,
+        targetType: "PROPERTY_BOOST",
+        startDate: boost.startDate || boost.createdAt,
+        endDate: boost.endDate || new Date(boost.createdAt.getTime() + boost.durationDays * 24 * 60 * 60 * 1000),
+        status: effectiveStatus,
+        pricePaidInr: boost.amountInr,
+        createdAt: boost.createdAt,
+        razorpayPaymentId: boost.razorpayPaymentId,
+        pricingPlan: {
+          id: boost.id,
+          name:
+            boost.durationDays === 7
+              ? "7-Day Visibility Boost"
+              : boost.durationDays === 15
+              ? "15-Day Visibility Boost"
+              : `${boost.durationDays}-Day Visibility Boost`,
+          durationDays: boost.durationDays,
+          priceInr: boost.amountInr,
+        },
+        property: boost.property,
+        roomType: null,
+        owner: boost.owner,
+        payments: boost.payments,
+      };
+    });
+
+    const mappedLegacy = legacyFeatured.map((item) => ({
+      id: item.id,
+      isBoost: false,
+      targetType: item.targetType,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      status: item.status,
+      pricePaidInr: item.pricePaidInr,
+      createdAt: item.createdAt,
+      pricingPlan: item.pricingPlan,
+      property: item.property,
+      roomType: item.roomType,
+      owner: null,
+      payments: [],
+    }));
+
+    const combined = [...mappedBoosts, ...mappedLegacy];
+    const totalCount = filteredBoostsCount + legacyFeatured.length;
+
     return {
       success: true,
       data: {
-        featured,
-        total,
+        featured: combined,
+        total: totalCount,
         page,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(totalCount / limit),
+        counts: {
+          total: allBoostsCount + legacyFeatured.length,
+          active: activeBoostsCount,
+          expired: expiredBoostsCount,
+          cancelled: cancelledBoostsCount,
+          revenueInr: boostsRevenueResult._sum.amountInr || 0,
+        },
       },
     };
   } catch (err: any) {
+    console.error("getAdminFeaturedListingsAction error:", err);
     return { success: false, error: err.message || "Failed to load featured listings." };
   }
 }
@@ -1506,6 +1930,30 @@ export async function updateAdminFeaturedStatusAction(input: {
 }) {
   try {
     const admin = await requireAdminContext();
+
+    // Check if it is a PropertyBoost first
+    const boost = await prisma.propertyBoost.findUnique({
+      where: { id: input.featuredId },
+    });
+
+    if (boost) {
+      const updated = await prisma.propertyBoost.update({
+        where: { id: input.featuredId },
+        data: { status: input.status as any },
+      });
+
+      await logAdminAction(
+        `BOOST_${input.status}`,
+        "PROPERTY_BOOST",
+        input.featuredId,
+        { status: input.status },
+        admin.id
+      );
+
+      revalidatePath("/admin/featured");
+      revalidatePath("/admin/billing");
+      return { success: true, data: updated };
+    }
 
     const updated = await prisma.featuredListing.update({
       where: { id: input.featuredId },

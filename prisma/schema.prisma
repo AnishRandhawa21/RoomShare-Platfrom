@@ -187,6 +187,32 @@ enum PaymentPurpose {
   OWNER_SUBSCRIPTION
   FEATURED_PROPERTY
   FEATURED_ROOM
+  PROPERTY_BOOST
+  OWNER_LISTING_PASS
+}
+
+enum ListingPassStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum ListingPassType {
+  SOLO
+  PLUS
+}
+
+enum BoostDurationType {
+  SEVEN_DAYS
+  FIFTEEN_DAYS
+  THIRTY_DAYS
+}
+
+enum BoostStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  EXPIRED
+  CANCELLED
 }
 
 enum PaymentStatus {
@@ -306,6 +332,8 @@ model OwnerProfile {
   // Relationships
   properties    Property[]
   subscriptions OwnerSubscription[]
+  listingPasses OwnerListingPass[]
+  boosts        PropertyBoost[]
 
   @@index([verificationStatus])
   @@index([contactPhone])
@@ -392,6 +420,7 @@ model Property {
   enquiries        PGEnquiry[]
   savedBy          SavedProperty[]
   featuredListings FeaturedListing[]
+  boosts           PropertyBoost[]
   roommateRequests RoommateRequest[]
   reports          Report[]
   reviews          Review[]
@@ -767,23 +796,58 @@ model SubscriptionPlan {
 }
 
 model OwnerSubscription {
-  id          String             @id @default(uuid())
-  ownerId     String
-  owner       OwnerProfile       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  planId      String
-  plan        SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
-  status      SubscriptionStatus @default(PENDING_PAYMENT)
-  startDate   DateTime
-  endDate     DateTime
-  autoRenew   Boolean            @default(false)
-  cancelledAt DateTime?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id                     String             @id @default(uuid())
+  ownerId                String
+  owner                  OwnerProfile       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  planId                 String
+  plan                   SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status                 SubscriptionStatus @default(PENDING_PAYMENT)
+  internalPlanType       String?            // "SOLO" | "PLUS"
+  startDate              DateTime
+  endDate                DateTime
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  autoRenew              Boolean            @default(true)
+  cancelledAt            DateTime?
+  razorpaySubscriptionId String?            @unique
+  razorpayCustomerId     String?
+  razorpayPlanId         String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 
-  payments    Payment[]
+  payments               Payment[]
 
   @@index([ownerId, status])
   @@index([endDate])
+  @@index([razorpaySubscriptionId])
+}
+
+// ==============================================================================
+// 11B. OWNER 30-DAY LISTING PASSES (Non-Recurring One-Time License)
+// ==============================================================================
+
+model OwnerListingPass {
+  id                String            @id @default(uuid())
+  ownerId           String
+  owner             OwnerProfile      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  planType          ListingPassType   @default(SOLO)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  amount            Int               // In INR (499 or 999)
+  currency          String            @default("INR")
+  propertyLimit     Int               @default(1) // 1 for Solo, configurable for Plus
+  startsAt          DateTime
+  expiresAt         DateTime
+  status            ListingPassStatus @default(ACTIVE)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  payments          Payment[]
+
+  @@index([ownerId, status])
+  @@index([expiresAt])
+  @@index([razorpayOrderId])
+  @@index([razorpayPaymentId])
 }
 
 // Configurable pricing for featured listings (₹199 property, ₹99 room are DB-driven)
@@ -824,38 +888,70 @@ model FeaturedListing {
   @@index([roomTypeId])
 }
 
+model PropertyBoost {
+  id                String            @id @default(uuid())
+  propertyId        String
+  property          Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  ownerId           String
+  owner             OwnerProfile      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  boostType         BoostDurationType @default(SEVEN_DAYS)
+  durationDays      Int               @default(7) // 7, 15, or 30
+  amountInr         Int               // 99, 149, or 249
+  status            BoostStatus       @default(PENDING_PAYMENT)
+  startDate         DateTime?
+  endDate           DateTime?
+  razorpayOrderId   String?           @unique
+  razorpayPaymentId String?           @unique
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  payments          Payment[]
+
+  @@index([propertyId, status, endDate])
+  @@index([ownerId])
+  @@index([razorpayPaymentId])
+}
+
 // ==============================================================================
 // 12. PAYMENTS (Razorpay Integration)
 // ==============================================================================
 
 model Payment {
-  id                  String             @id @default(uuid())
-  userId              String
-  user                User               @relation(fields: [userId], references: [id], onDelete: Restrict)
-  amount              Int                // Amount in INR
-  currency            String             @default("INR")
-  purpose             PaymentPurpose
-  status              PaymentStatus      @default(CREATED)
+  id                     String             @id @default(uuid())
+  userId                 String
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  amount                 Int                // Amount in INR
+  currency               String             @default("INR")
+  purpose                PaymentPurpose
+  status                 PaymentStatus      @default(CREATED)
+  paymentType            String?            // "SUBSCRIPTION" | "PROPERTY_BOOST" | "ONE_TIME"
 
   // Razorpay Transaction References (Stored safely, verified server-side)
-  razorpayOrderId     String?            @unique
-  razorpayPaymentId   String?            @unique
-  razorpaySignature   String?
-  paymentMethod       String?            // e.g. "UPI", "CARD", "NETBANKING"
-  verifiedAt          DateTime?          // Set only after server-side cryptographic verification
+  razorpayOrderId        String?            @unique
+  razorpayPaymentId      String?            @unique
+  razorpaySignature      String?
+  razorpaySubscriptionId String?
+  paymentMethod          String?            // e.g. "UPI", "CARD", "NETBANKING"
+  metadata               Json?              // Flexible audit & webhook events snapshot
+  verifiedAt             DateTime?          // Set only after server-side cryptographic verification
 
   // Associated Business Entities
-  ownerSubscriptionId String?
-  ownerSubscription   OwnerSubscription? @relation(fields: [ownerSubscriptionId], references: [id], onDelete: SetNull)
-  featuredListingId   String?
-  featuredListing     FeaturedListing?   @relation(fields: [featuredListingId], references: [id], onDelete: SetNull)
+  ownerSubscriptionId    String?
+  ownerSubscription      OwnerSubscription? @relation(fields: [ownerSubscriptionId], references: [id], onDelete: SetNull)
+  ownerListingPassId     String?
+  ownerListingPass       OwnerListingPass?  @relation(fields: [ownerListingPassId], references: [id], onDelete: SetNull)
+  featuredListingId      String?
+  featuredListing        FeaturedListing?   @relation(fields: [featuredListingId], references: [id], onDelete: SetNull)
+  propertyBoostId        String?
+  propertyBoost          PropertyBoost?     @relation(fields: [propertyBoostId], references: [id], onDelete: SetNull)
 
-  errorMessage        String?            @db.Text
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  errorMessage           String?            @db.Text
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 
   @@index([userId])
   @@index([razorpayOrderId])
+  @@index([razorpayPaymentId])
   @@index([status])
 }
 

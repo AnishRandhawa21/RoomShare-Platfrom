@@ -48,3 +48,7 @@ next-env.d.ts
 
 # prisma generated
 /lib/generated/prisma
+
+# scratch
+scratch/
+

@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { submitPGEnquiryAction } from "@/actions/enquiry";
+import { CustomDatePicker } from "@/components/ui/CustomDatePicker";
 import type { RoomTypeData } from "./RoomTypesSection";
 
 interface OwnerContactCardProps {
@@ -49,6 +50,7 @@ export function OwnerContactCard({
 }: OwnerContactCardProps) {
   const [showEnquiryForm, setShowEnquiryForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [enquiryMoveInDate, setEnquiryMoveInDate] = useState("");
   const [statusMessage, setStatusMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -342,11 +344,13 @@ export function OwnerContactCard({
             <label htmlFor="enquiry-date" className="block text-[11px] font-bold uppercase text-zinc-500 mb-1">
               Expected Move-in Date
             </label>
-            <input
+            <CustomDatePicker
               id="enquiry-date"
               name="moveInDate"
-              type="date"
-              className="w-full rounded-xl border border-[#E8EAE5] bg-[#E8EAE5]/30 px-3 py-2 text-xs font-semibold text-zinc-900 focus:bg-white focus:border-[#00412E] focus:outline-none"
+              value={enquiryMoveInDate}
+              onChange={setEnquiryMoveInDate}
+              minDate={new Date().toISOString().split("T")[0]}
+              placeholder="Select expected move-in date"
             />
           </div>
 
