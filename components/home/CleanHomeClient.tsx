@@ -24,6 +24,8 @@ import {
   RefreshCw,
   ChevronDown,
   Check,
+  MapPinOff,
+  Compass,
 } from "lucide-react";
 import type {
   PropertyListingSummary,
@@ -199,6 +201,7 @@ export function CleanHomeClient({
 
   // User Geolocation & Sorting
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const [nearMeRadiusKm, setNearMeRadiusKm] = useState<number>(25);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"recommended" | "nearest" | "price-asc" | "price-desc" | "rating" | "newest">("recommended");
@@ -282,6 +285,7 @@ export function CleanHomeClient({
           longitude: pos.coords.longitude,
         };
         setUserLocation(coords);
+        setNearMeRadiusKm(25);
         setIsLocating(false);
         setSortBy("nearest");
         setSelectedCity("All"); // Show all properties ranked by proximity to current location
@@ -301,6 +305,7 @@ export function CleanHomeClient({
 
   const handleClearLocation = () => {
     setUserLocation(null);
+    setNearMeRadiusKm(25);
     setSortBy("recommended");
     setSelectedCity(defaultCity);
   };
@@ -401,11 +406,19 @@ export function CleanHomeClient({
         };
       })
       .filter((p) => {
+        // When user location is active, strictly filter within selected radius
+        if (userLocation) {
+          if (p.distanceKm === undefined || p.distanceKm > nearMeRadiusKm) {
+            return false;
+          }
+        }
+
         if (availabilityFilter === "roommate" && !p.hasActiveRoommateRequest) {
           return false;
         }
 
         const matchesCity =
+          userLocation || // when user location is active, search across all locations within radius
           selectedCity === "All" ||
           p.city.toLowerCase() === selectedCity.toLowerCase() ||
           searchQuery.trim().length > 0;
@@ -442,6 +455,7 @@ export function CleanHomeClient({
     selectedGender,
     availabilityFilter,
     userLocation,
+    nearMeRadiusKm,
     sortBy,
   ]);
 
@@ -670,7 +684,7 @@ export function CleanHomeClient({
                     ) : (
                       <Navigation className="h-3.5 w-3.5" />
                     )}
-                    <span>{userLocation ? "Near Me (Active)" : "Find Near Me"}</span>
+                    <span>{userLocation ? `Near Me (${nearMeRadiusKm}km)` : "Find Near Me"}</span>
                   </button>
 
                   <span className="font-semibold text-zinc-500 flex items-center gap-1 mx-1">
@@ -712,7 +726,7 @@ export function CleanHomeClient({
               <div>
                 <div className="flex items-center gap-2.5">
                   <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-950">
-                    {userLocation ? "Stays Near You" : `Verified Stays in ${selectedCity}`}
+                    {userLocation ? `Stays Within ${nearMeRadiusKm} km` : `Verified Stays in ${selectedCity}`}
                   </h2>
                   <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-600 border border-zinc-200/60">
                     {filteredProperties.length} {filteredProperties.length === 1 ? "stay" : "stays"}
@@ -720,7 +734,7 @@ export function CleanHomeClient({
                 </div>
                 <p className="mt-1 text-xs sm:text-sm text-zinc-500">
                   {userLocation
-                    ? "Direct distance from your current location • 100% zero brokerage"
+                    ? `Showing verified accommodations within ${nearMeRadiusKm} km of your GPS location • Zero brokerage`
                     : "Direct-from-owner accommodations with verified inventory and pricing"}
                 </p>
               </div>
@@ -816,35 +830,56 @@ export function CleanHomeClient({
               </div>
 
               {/* Right: GPS Active Status & Sort Selector */}
-              <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0 text-xs">
+              <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto shrink-0 text-xs">
                 {userLocation ? (
-                  <div className="inline-flex items-center gap-2 rounded-xl bg-[#eff4ec] border border-[#96BF8A]/40 px-3 py-1.5 font-medium text-[#00412E] shadow-2xs">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#96BF8A] opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00412E]"></span>
-                    </span>
-                    <span className="font-bold">GPS Near Me</span>
-                    <button
-                      type="button"
-                      onClick={handleLocateMe}
-                      disabled={isLocating}
-                      title="Refresh GPS"
-                      className="text-[#00412E] hover:text-[#002d20] cursor-pointer transition-colors p-0.5"
-                    >
-                      {isLocating ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-3 w-3" />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleClearLocation}
-                      title="Clear location filter"
-                      className="text-zinc-400 hover:text-rose-600 font-bold cursor-pointer text-xs leading-none pl-1 transition-colors"
-                    >
-                      ✕
-                    </button>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="inline-flex items-center gap-2 rounded-xl bg-[#eff4ec] border border-[#96BF8A]/40 px-3 py-1.5 font-medium text-[#00412E] shadow-2xs">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#96BF8A] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00412E]"></span>
+                      </span>
+                      <span className="font-bold">Near Me</span>
+                      <button
+                        type="button"
+                        onClick={handleLocateMe}
+                        disabled={isLocating}
+                        title="Refresh GPS"
+                        className="text-[#00412E] hover:text-[#002d20] cursor-pointer transition-colors p-0.5"
+                      >
+                        {isLocating ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3 w-3" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearLocation}
+                        title="Clear location filter"
+                        className="text-zinc-400 hover:text-rose-600 font-bold cursor-pointer text-xs leading-none pl-1 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* Radius selector pills */}
+                    <div className="inline-flex items-center rounded-xl bg-zinc-100 p-0.5 border border-zinc-200/80 shadow-2xs">
+                      {[10, 25, 50].map((radius) => (
+                        <button
+                          key={radius}
+                          type="button"
+                          onClick={() => setNearMeRadiusKm(radius)}
+                          className={`rounded-lg px-2 py-1 text-xs font-bold transition-all cursor-pointer ${
+                            nearMeRadiusKm === radius
+                              ? "bg-white text-[#00412E] shadow-xs"
+                              : "text-zinc-500 hover:text-zinc-900"
+                          }`}
+                          title={`Show stays within ${radius} km`}
+                        >
+                          {radius}km
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <button
@@ -950,6 +985,92 @@ export function CleanHomeClient({
                   ))}
                 </div>
               )
+            ) : userLocation ? (
+              // Dedicated Near Me Out-of-Area Zero State
+              <div className="mt-12 rounded-3xl border border-[#E8EAE5] bg-gradient-to-b from-white to-[#FAFAF8] p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 border border-amber-200/70 mb-5 shadow-xs">
+                  <MapPinOff className="h-7 w-7" />
+                </div>
+
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#eff4ec] px-3 py-1 text-xs font-bold text-[#00412E] mb-3 border border-[#96BF8A]/30">
+                  <Compass className="h-3.5 w-3.5 text-[#96BF8A]" />
+                  <span>Outside Active Coverage Area</span>
+                </div>
+
+                <h3 className="text-lg sm:text-xl font-extrabold text-zinc-950">
+                  StayKro is not available in your area yet
+                </h3>
+
+                <p className="mt-2 text-xs sm:text-sm text-zinc-600 leading-relaxed max-w-md mx-auto">
+                  We couldn&apos;t find any verified PGs or coliving stays within{" "}
+                  <strong className="text-zinc-900 font-bold">{nearMeRadiusKm} km</strong> of your current location. We are actively expanding to new student and corporate hubs!
+                </p>
+
+                {/* Radius Expand Action if less than 50km */}
+                {nearMeRadiusKm < 50 && (
+                  <div className="mt-5">
+                    <button
+                      type="button"
+                      onClick={() => setNearMeRadiusKm(50)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#00412E] px-4 py-2.5 text-xs sm:text-sm font-bold text-white hover:bg-[#002d20] transition-all cursor-pointer shadow-sm hover:shadow"
+                    >
+                      <Navigation className="h-4 w-4 text-[#96BF8A]" />
+                      <span>Expand Search to 50 km</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Active Hubs Quick Navigation */}
+                <div className="mt-6 pt-5 border-t border-[#E8EAE5]">
+                  <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3">
+                    Explore available stays in nearby hubs:
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {availableCities
+                      ?.filter((c) => (c.propertyCount || 0) > 0)
+                      .slice(0, 3)
+                      .map((c) => (
+                        <button
+                          key={c.name}
+                          type="button"
+                          onClick={() => {
+                            handleClearLocation();
+                            setSelectedCity(c.name);
+                            setSearchQuery("");
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-[#E8EAE5] bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 hover:bg-[#eff4ec] hover:border-[#96BF8A]/50 hover:text-[#00412E] transition-all cursor-pointer shadow-2xs"
+                        >
+                          <MapPin className="h-3.5 w-3.5 text-[#96BF8A]" />
+                          <span>{c.name}</span>
+                          <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 rounded-md px-1.5 py-0.5">
+                            {c.propertyCount} PGs
+                          </span>
+                        </button>
+                      ))}
+                    <button
+                      type="button"
+                      onClick={handleClearLocation}
+                      className="inline-flex items-center gap-1 rounded-xl border border-[#E8EAE5] bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-all cursor-pointer shadow-2xs"
+                    >
+                      Clear Location
+                    </button>
+                  </div>
+                </div>
+
+                {/* PG Owner Callout */}
+                <div className="mt-6 rounded-2xl bg-[#eff4ec]/60 border border-[#96BF8A]/30 p-3.5 text-center">
+                  <p className="text-xs text-zinc-600 font-medium">
+                    Are you a PG or hostel owner in this area?{" "}
+                    <Link
+                      href="/owner/onboarding"
+                      className="font-bold text-[#00412E] hover:underline inline-flex items-center gap-0.5"
+                    >
+                      List your property on StayKro
+                      <ArrowRight className="h-3 w-3 inline" />
+                    </Link>
+                  </p>
+                </div>
+              </div>
             ) : (
               // Clean empty state for PGs with smart zero-results fallbacks
               <div className="mt-12 rounded-3xl border border-dashed border-[#E8EAE5] bg-zinc-50/50 p-10 sm:p-14 text-center max-w-lg mx-auto">
