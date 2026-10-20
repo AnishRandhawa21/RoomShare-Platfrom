@@ -5,6 +5,14 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// Reset any previously cached Prisma client in dev memory that had query logging enabled
+if (globalForPrisma.prisma) {
+  try {
+    globalForPrisma.prisma.$disconnect();
+  } catch {}
+  globalForPrisma.prisma = undefined;
+}
+
 /**
  * Returns a robust, serverless-optimized database connection URL.
  * Automatically converts Supabase pooler session port (5432) to transaction mode (6543)
@@ -29,7 +37,7 @@ const createPrismaClient = () => {
   const url = getOptimizedDatabaseUrl();
   return new PrismaClient({
     datasources: url ? { db: { url } } : undefined,
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    log: ["error"],
   });
 };
 
@@ -39,7 +47,9 @@ function getPrismaClient(): PrismaClient {
   }
 
   const client = createPrismaClient();
-  globalForPrisma.prisma = client;
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+  }
   return client;
 }
 
