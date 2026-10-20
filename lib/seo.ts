@@ -4,7 +4,7 @@
  */
 
 export const APP_BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://staykro.com";
+  process.env.NEXT_PUBLIC_APP_URL || "https://staykro.in";
 
 export function toSlug(text: string): string {
   return text

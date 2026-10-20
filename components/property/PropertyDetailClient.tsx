@@ -23,7 +23,9 @@ import {
   CheckCircle2,
   Star,
   Loader2,
+  Share2,
 } from "lucide-react";
+import { PropertyShareModal } from "./PropertyShareModal";
 
 const SinglePropertyMap = dynamic(
   () => import("@/components/map/SinglePropertyMap").then((mod) => mod.SinglePropertyMap),
@@ -86,6 +88,7 @@ export function PropertyDetailClient({
   currentUser,
 }: PropertyDetailClientProps) {
   const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<string | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const selectedRoomType = property.roomTypes.find((rt) => rt.id === selectedRoomTypeId);
 
@@ -215,11 +218,22 @@ export function PropertyDetailClient({
                     )}
                   </div>
 
-                  <BookmarkButton
-                    targetId={property.id}
-                    targetType="PROPERTY"
-                    size="md"
-                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsShareOpen(true)}
+                      aria-label="Share property"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-bold text-zinc-700 hover:text-[#00412E] hover:border-[#96BF8A] shadow-2xs transition-all cursor-pointer"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                      <span>Share</span>
+                    </button>
+                    <BookmarkButton
+                      targetId={property.id}
+                      targetType="PROPERTY"
+                      size="md"
+                    />
+                  </div>
                 </div>
 
                 <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-zinc-950">
@@ -436,6 +450,32 @@ export function PropertyDetailClient({
           );
         })()}
       </div>
+
+      <PropertyShareModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        property={{
+          id: property.id,
+          name: property.name,
+          slug: property.slug,
+          locality: property.locality,
+          city: property.city,
+          genderPolicy: property.genderPolicy,
+          startingPrice: property.startingPrice,
+          foodIncluded: property.foodIncluded,
+          coverImageUrl: property.images && property.images.length > 0 ? property.images[0].url : null,
+          images: property.images?.map((img) => img.url),
+          isVerified: property.isVerified,
+          rating: property.reviews && property.reviews.length > 0
+            ? property.reviews.reduce((a, r) => a + r.rating, 0) / property.reviews.length
+            : undefined,
+          reviewCount: property.reviews?.length,
+          bestSharingOccupancy: defaultRoomType?.occupancy,
+          roomTypeSummaries: property.roomTypes.map(
+            (rt) => `${rt.name} (${rt.occupancy > 1 ? `${rt.occupancy}-Sharing` : "Private"})`
+          ),
+        }}
+      />
 
       {/* 4. Footer */}
       <Footer />

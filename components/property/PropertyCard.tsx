@@ -10,10 +10,12 @@ import {
   Utensils,
   Navigation,
   Star,
+  Share2,
 } from "lucide-react";
 import type { PropertyListingSummary } from "@/lib/discovery";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { formatDistance } from "@/lib/geo";
+import { PropertyShareModal } from "./PropertyShareModal";
 
 export interface PropertyCardProps {
   pg: PropertyListingSummary;
@@ -28,6 +30,7 @@ export function PropertyCard({
   onMouseEnter,
   onMouseLeave,
 }: PropertyCardProps) {
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const allImages = useMemo(() => {
     if (pg.images && pg.images.length > 0) return pg.images;
     if (pg.coverImageUrl) return [pg.coverImageUrl];
@@ -161,7 +164,20 @@ export function PropertyCard({
           )}
         </div>
 
-        <div className="absolute top-3 right-3 z-10">
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsShareOpen(true);
+            }}
+            aria-label="Share property"
+            title="Share property card"
+            className="h-8 w-8 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center text-zinc-700 hover:text-[#00412E] hover:bg-white shadow-xs transition-colors cursor-pointer"
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
           <BookmarkButton
             targetId={pg.id}
             targetType="PROPERTY"
@@ -250,6 +266,12 @@ export function PropertyCard({
           </Link>
         </div>
       </div>
+
+      <PropertyShareModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        property={pg}
+      />
     </div>
   );
 }
