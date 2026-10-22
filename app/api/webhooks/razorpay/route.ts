@@ -173,6 +173,12 @@ export async function POST(req: Request) {
                 }
               }
             }
+
+            // Revert owner pricing to global catalog by deactivating custom discount override
+            await prisma.ownerPricingOverride.updateMany({
+              where: { ownerProfileId: ownerId, isActive: true },
+              data: { isActive: false },
+            });
           }
         }
 

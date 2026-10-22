@@ -23,6 +23,7 @@ import {
   Settings,
   LogOut,
   ExternalLink,
+  Tag,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -117,6 +118,11 @@ export function AdminSidebar({
           name: "Billing & Revenue",
           href: "/admin/billing",
           icon: CreditCard,
+        },
+        {
+          name: "Manage Pricing",
+          href: "/admin/pricing",
+          icon: Tag,
         },
         {
           name: "Payments Ledger",

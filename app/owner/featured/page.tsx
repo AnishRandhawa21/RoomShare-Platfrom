@@ -16,13 +16,23 @@ async function FeaturedDataLoader() {
   }
 
   const res = await getOwnerFeaturedListingsAction();
-  const data = res.success && res.data ? res.data : { featuredListings: [], pricingPlans: [] };
+  const data =
+    res.success && res.data
+      ? res.data
+      : { featuredListings: [], pricingConfig: null, properties: [] };
 
-  const campaigns = data.featuredListings.map((c: any) => ({
+  const campaigns = (data.featuredListings || []).map((c: any) => ({
     id: c.id,
     status: c.status,
-    startDate: c.startDate.toISOString(),
-    endDate: c.endDate.toISOString(),
+    startDate:
+      c.startDate instanceof Date
+        ? c.startDate.toISOString()
+        : new Date(c.startDate).toISOString(),
+    endDate: c.endDate
+      ? c.endDate instanceof Date
+        ? c.endDate.toISOString()
+        : new Date(c.endDate).toISOString()
+      : "",
     property: c.property,
     roomType: c.roomType,
     pricingPlan: {
@@ -32,15 +42,21 @@ async function FeaturedDataLoader() {
     },
   }));
 
-  const pricingPlans = data.pricingPlans.map((p: any) => ({
+  const properties = (data.properties || []).map((p: any) => ({
     id: p.id,
     name: p.name,
-    durationDays: p.durationDays,
-    priceInr: p.priceInr,
-    description: p.description,
+    slug: p.slug,
+    locality: p.locality,
+    city: p.city,
   }));
 
-  return <OwnerFeaturedClient campaigns={campaigns} pricingPlans={pricingPlans} />;
+  return (
+    <OwnerFeaturedClient
+      campaigns={campaigns}
+      properties={properties}
+      boostsConfig={data.pricingConfig?.boosts}
+    />
+  );
 }
 
 export default function OwnerFeaturedPage() {

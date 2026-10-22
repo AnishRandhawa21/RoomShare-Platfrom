@@ -58,6 +58,16 @@ export interface RazorpaySubscriptionOptions {
   modal?: {
     ondismiss?: () => void;
   };
+  onFailure?: (response: {
+    error: {
+      code: string;
+      description: string;
+      source: string;
+      step: string;
+      reason: string;
+      metadata: any;
+    };
+  }) => void;
 }
 
 export interface RazorpayOrderOptions {
@@ -84,6 +94,16 @@ export interface RazorpayOrderOptions {
   modal?: {
     ondismiss?: () => void;
   };
+  onFailure?: (response: {
+    error: {
+      code: string;
+      description: string;
+      source: string;
+      step: string;
+      reason: string;
+      metadata: any;
+    };
+  }) => void;
 }
 
 export function useRazorpay() {
@@ -102,7 +122,10 @@ export function useRazorpay() {
       });
 
       rzp.on("payment.failed", (response: any) => {
-        console.warn("Razorpay payment failed:", response.error);
+        console.warn("Razorpay subscription payment failed:", response.error);
+        if (options.onFailure) {
+          options.onFailure(response);
+        }
       });
 
       rzp.open();
@@ -126,6 +149,9 @@ export function useRazorpay() {
 
       rzp.on("payment.failed", (response: any) => {
         console.warn("Razorpay order payment failed:", response.error);
+        if (options.onFailure) {
+          options.onFailure(response);
+        }
       });
 
       rzp.open();

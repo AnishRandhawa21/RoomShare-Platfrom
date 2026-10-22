@@ -26,6 +26,10 @@ interface SubscriptionPaywallModalProps {
   onClose: () => void;
   entitlement?: OwnerPublishingEntitlement | null;
   onSuccess?: () => void;
+  passesConfig?: {
+    SOLO?: { priceInr: number; originalPriceInr?: number | null; name?: string };
+    PLUS?: { priceInr: number; originalPriceInr?: number | null; name?: string; maxProperties?: number };
+  };
 }
 
 export function SubscriptionPaywallModal({
@@ -33,6 +37,7 @@ export function SubscriptionPaywallModal({
   onClose,
   entitlement,
   onSuccess,
+  passesConfig,
 }: SubscriptionPaywallModalProps) {
   const router = useRouter();
   const { openOrderCheckout } = useRazorpay();
@@ -43,9 +48,35 @@ export function SubscriptionPaywallModal({
   const [error, setError] = useState<string | null>(null);
   const [successPlanName, setSuccessPlanName] = useState<string | null>(null);
 
+  const soloPrice = passesConfig?.SOLO?.priceInr || STAYKRO_BILLING_CONFIG.passes.SOLO.priceInr;
+  const soloOriginal = passesConfig?.SOLO?.originalPriceInr;
+  const plusPrice = passesConfig?.PLUS?.priceInr || STAYKRO_BILLING_CONFIG.passes.PLUS.priceInr;
+  const plusOriginal = passesConfig?.PLUS?.originalPriceInr;
+  const plusMax = passesConfig?.PLUS?.maxProperties || STAYKRO_BILLING_CONFIG.plusMaxProperties;
+
+  const soloDiscount =
+    soloOriginal && soloOriginal > soloPrice
+      ? Math.round(((soloOriginal - soloPrice) / soloOriginal) * 100)
+      : null;
+
+  const plusDiscount =
+    plusOriginal && plusOriginal > plusPrice
+      ? Math.round(((plusOriginal - plusPrice) / plusOriginal) * 100)
+      : null;
+
   if (!isOpen) return null;
 
+  const isPlusActive =
+    (entitlement?.activePass?.planType === "PLUS" && entitlement?.activePass?.status === "ACTIVE") ||
+    entitlement?.activePlan?.code === "PLUS" ||
+    entitlement?.activePlan?.code === "OWNER_MULTI_PROPERTY";
+
   const handleCheckout = async (planCode: ListingPassPlanCode) => {
+    if (planCode === "SOLO" && isPlusActive) {
+      setError("You currently have an active StayKro Plus pass. You can only purchase a Solo pass after your Plus pass expires.");
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
 
@@ -80,6 +111,13 @@ export function SubscriptionPaywallModal({
           ondismiss: () => {
             setIsProcessing(false);
           },
+        },
+        onFailure: (failureResponse) => {
+          setIsProcessing(false);
+          setError(
+            failureResponse?.error?.description ||
+              "Payment was unsuccessful or cancelled. Please check your UPI app or payment method."
+          );
         },
         handler: async (paymentResponse) => {
           try {
@@ -193,26 +231,53 @@ export function SubscriptionPaywallModal({
             <div className="grid sm:grid-cols-2 gap-4">
               {/* StayKro Solo */}
               <div
-                onClick={() => setSelectedPlan("SOLO")}
-                className={`relative rounded-2xl border p-5 cursor-pointer transition-all flex flex-col justify-between ${
-                  selectedPlan === "SOLO"
-                    ? "border-[#00412E] ring-2 ring-[#00412E]/15 bg-white shadow-md"
-                    : "border-zinc-200 bg-zinc-50/60 hover:border-zinc-300"
+                onClick={() => {
+                  if (!isPlusActive) setSelectedPlan("SOLO");
+                }}
+                className={`relative rounded-2xl border p-5 transition-all flex flex-col justify-between overflow-hidden ${
+                  isPlusActive
+                    ? "border-zinc-200 bg-zinc-100/70 opacity-75 cursor-not-allowed"
+                    : selectedPlan === "SOLO"
+                    ? "border-[#00412E] ring-2 ring-[#00412E]/15 bg-white shadow-md cursor-pointer"
+                    : "border-zinc-200 bg-zinc-50/60 hover:border-zinc-300 cursor-pointer"
                 }`}
               >
+                {soloDiscount ? (
+                  <div className="absolute top-0 right-0 bg-[#00412E] text-white px-3 py-1 rounded-bl-xl text-[9px] font-bold uppercase tracking-wider shadow-2xs flex items-center gap-1">
+                    <span className="bg-emerald-400 text-zinc-950 font-black px-1 py-0.2 rounded text-[8px]">
+                      {soloDiscount}% OFF
+                    </span>
+                    <span>Special</span>
+                  </div>
+                ) : null}
+
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-extrabold uppercase tracking-wider text-zinc-500">
                       StayKro Solo
                     </span>
-                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-600">
-                      1 PG • 30 Days
-                    </span>
+                    {!soloDiscount && (
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-600">
+                        1 PG • 30 Days
+                      </span>
+                    )}
                   </div>
 
                   <div>
-                    <div className="text-2xl font-black text-zinc-950">₹499</div>
-                    <div className="text-[11px] text-zinc-500 font-medium">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-2xl font-black text-zinc-950">₹{soloPrice}</span>
+                      {soloOriginal && soloOriginal > soloPrice && (
+                        <span className="text-xs font-semibold text-zinc-400 line-through">
+                          ₹{soloOriginal}
+                        </span>
+                      )}
+                      {soloDiscount && (
+                        <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-1.5 py-0.2 border border-emerald-300/60">
+                          Save ₹{soloOriginal! - soloPrice}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-zinc-500 font-medium mt-0.5">
                       One-time payment • Valid for 30 days
                     </div>
                   </div>
@@ -234,28 +299,43 @@ export function SubscriptionPaywallModal({
                 </div>
 
                 <div className="pt-4">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCheckout("SOLO");
-                    }}
-                    disabled={isProcessing}
-                    className={`w-full rounded-full py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      selectedPlan === "SOLO"
-                        ? "bg-[#00412E] hover:bg-[#002f21] text-white shadow-xs"
-                        : "bg-zinc-200 hover:bg-zinc-300 text-zinc-800"
-                    }`}
-                  >
-                    {isProcessing && selectedPlan === "SOLO" ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Opening Checkout...</span>
-                      </>
-                    ) : (
-                      <span>Get Solo Pass (₹499)</span>
-                    )}
-                  </button>
+                  {isPlusActive ? (
+                    <div className="space-y-1 text-center">
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full rounded-full py-2.5 text-xs font-bold bg-zinc-200 text-zinc-400 cursor-not-allowed"
+                      >
+                        Unavailable while Plus is Active
+                      </button>
+                      <p className="text-[10px] text-zinc-400">
+                        Available once your active Plus pass expires
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCheckout("SOLO");
+                      }}
+                      disabled={isProcessing}
+                      className={`w-full rounded-full py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        selectedPlan === "SOLO"
+                          ? "bg-[#00412E] hover:bg-[#002f21] text-white shadow-xs"
+                          : "bg-zinc-200 hover:bg-zinc-300 text-zinc-800"
+                      }`}
+                    >
+                      {isProcessing && selectedPlan === "SOLO" ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Opening Checkout...</span>
+                        </>
+                      ) : (
+                        <span>Get Solo Pass (₹{soloPrice})</span>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -268,7 +348,12 @@ export function SubscriptionPaywallModal({
                     : "border-zinc-200 bg-zinc-50/60 hover:border-zinc-300"
                 }`}
               >
-                <div className="absolute -top-2.5 right-4 rounded-full bg-[#00412E] px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs flex items-center gap-1">
+                <div className="absolute -top-2.5 right-4 rounded-full bg-[#00412E] px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs flex items-center gap-1.5">
+                  {plusDiscount && (
+                    <span className="bg-amber-400 text-zinc-950 font-black px-1.5 py-0.2 rounded text-[8px]">
+                      {plusDiscount}% OFF
+                    </span>
+                  )}
                   <Sparkles className="h-3 w-3 text-[#96BF8A]" />
                   <span>Multi-PG</span>
                 </div>
@@ -279,13 +364,25 @@ export function SubscriptionPaywallModal({
                       StayKro Plus
                     </span>
                     <span className="rounded-full bg-[#96BF8A]/30 text-[#00412E] px-2 py-0.5 text-[10px] font-bold">
-                      Up to {STAYKRO_BILLING_CONFIG.plusMaxProperties} PGs
+                      Up to {plusMax} PGs
                     </span>
                   </div>
 
                   <div>
-                    <div className="text-2xl font-black text-zinc-950">₹999</div>
-                    <div className="text-[11px] text-zinc-500 font-medium">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-2xl font-black text-zinc-950">₹{plusPrice}</span>
+                      {plusOriginal && plusOriginal > plusPrice && (
+                        <span className="text-xs font-semibold text-zinc-400 line-through">
+                          ₹{plusOriginal}
+                        </span>
+                      )}
+                      {plusDiscount && (
+                        <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-1.5 py-0.2 border border-emerald-300/60">
+                          Save ₹{plusOriginal! - plusPrice}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-zinc-500 font-medium mt-0.5">
                       One-time payment • Valid for 30 days
                     </div>
                   </div>
@@ -326,7 +423,7 @@ export function SubscriptionPaywallModal({
                         <span>Opening Checkout...</span>
                       </>
                     ) : (
-                      <span>Get Plus Pass (₹999)</span>
+                      <span>Get Plus Pass (₹{plusPrice})</span>
                     )}
                   </button>
                 </div>

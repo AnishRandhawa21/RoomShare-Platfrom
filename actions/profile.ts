@@ -95,7 +95,25 @@ export async function updateProfileAction(
       },
     });
 
+    // If user has an owner profile, also update business name and WhatsApp contact
+    const businessName = formData.get("businessName")?.toString().trim() || null;
+    const whatsappNumber = formData.get("whatsappNumber")?.toString().trim() || null;
+
+    if (currentUser.ownerProfile) {
+      await prisma.ownerProfile.update({
+        where: { id: currentUser.ownerProfile.id },
+        data: {
+          ...(businessName !== null ? { businessName } : {}),
+          ...(whatsappNumber !== null ? { whatsappNumber } : {}),
+          contactPhone: phone || currentUser.ownerProfile.contactPhone,
+        },
+      });
+    }
+
     revalidatePath("/profile");
+    revalidatePath("/owner");
+    revalidatePath("/owner/properties");
+    revalidatePath("/admin");
     return { success: true, message: "Profile updated successfully!" };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to update profile.";

@@ -5,32 +5,33 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Reset any previously cached Prisma client in dev memory that had query logging enabled
-if (globalForPrisma.prisma) {
-  try {
-    globalForPrisma.prisma.$disconnect();
-  } catch {}
-  globalForPrisma.prisma = undefined;
-}
-
 /**
  * Returns a robust, serverless-optimized database connection URL.
  * Automatically converts Supabase pooler session port (5432) to transaction mode (6543)
- * with pgbouncer=true to prevent FATAL: (EMAXCONNSESSION) max clients reached in session mode.
+ * and configures a healthy connection pool (limit: 10, timeout: 30s) so concurrent queries
+ * from Promise.all in Server Components do not time out.
  */
 function getOptimizedDatabaseUrl(): string | undefined {
   const url = process.env.DATABASE_URL;
   if (!url) return undefined;
 
-  if (url.includes("pooler.supabase.com:5432")) {
-    let pooled = url.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543");
-    if (!pooled.includes("pgbouncer=true")) {
-      pooled += (pooled.includes("?") ? "&" : "?") + "pgbouncer=true&connection_limit=1";
-    }
-    return pooled;
+  let optimized = url;
+  if (optimized.includes("pooler.supabase.com:5432")) {
+    optimized = optimized.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543");
   }
 
-  return url;
+  if (!optimized.includes("pgbouncer=true")) {
+    optimized += (optimized.includes("?") ? "&" : "?") + "pgbouncer=true";
+  }
+
+  // Replace restrictive connection_limit=1 with 10 to support parallel RSC queries
+  if (optimized.includes("connection_limit=1")) {
+    optimized = optimized.replace("connection_limit=1", "connection_limit=10&pool_timeout=30");
+  } else if (!optimized.includes("connection_limit=")) {
+    optimized += (optimized.includes("?") ? "&" : "?") + "connection_limit=10&pool_timeout=30";
+  }
+
+  return optimized;
 }
 
 const createPrismaClient = () => {
@@ -43,6 +44,13 @@ const createPrismaClient = () => {
 
 function getPrismaClient(): PrismaClient {
   if (globalForPrisma.prisma) {
+    // If cached client is stale and lacks newly generated models, recreate it
+    if (!(globalForPrisma.prisma as any).systemPricingPlan) {
+      try {
+        globalForPrisma.prisma.$disconnect();
+      } catch {}
+      globalForPrisma.prisma = createPrismaClient();
+    }
     return globalForPrisma.prisma;
   }
 
@@ -53,6 +61,37 @@ function getPrismaClient(): PrismaClient {
   return client;
 }
 
-export const prisma = getPrismaClient();
+// Resilient dynamic proxy: automatically binds methods and auto-refreshes if new models are generated
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrismaClient();
+    const value = (client as any)[prop];
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
 
-export * from "@prisma/client";
+// Explicit exports to satisfy Next.js Turbopack CJS/ESM interop
+export type { Prisma } from "@prisma/client";
+export {
+  PrismaClient,
+  Role,
+  VerificationStatus,
+  PropertyType,
+  GenderPolicy,
+  PropertyStatus,
+  RoomOperationalStatus,
+  FoodOffering,
+  ImageType,
+  EnquiryChannel,
+  DietaryPreference,
+  SmokingPreference,
+  DrinkingPreference,
+  SleepSchedule,
+  OccupationPreference,
+  RoommateRequestStatus,
+  RoommateInterestStatus,
+  FeaturedTargetType,
+} from "@prisma/client";

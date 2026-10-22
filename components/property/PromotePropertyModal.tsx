@@ -24,6 +24,11 @@ interface PromotePropertyModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  boostsConfig?: {
+    SEVEN_DAYS?: any;
+    FIFTEEN_DAYS?: any;
+    THIRTY_DAYS?: any;
+  };
 }
 
 export function PromotePropertyModal({
@@ -32,6 +37,7 @@ export function PromotePropertyModal({
   isOpen,
   onClose,
   onSuccess,
+  boostsConfig,
 }: PromotePropertyModalProps) {
   const [selectedTier, setSelectedTier] = useState<PropertyBoostType>("FIFTEEN_DAYS");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -45,13 +51,19 @@ export function PromotePropertyModal({
 
   if (!isOpen) return null;
 
+  const resolvedBoosts = {
+    SEVEN_DAYS: boostsConfig?.SEVEN_DAYS || STAYKRO_BILLING_CONFIG.boosts.SEVEN_DAYS,
+    FIFTEEN_DAYS: boostsConfig?.FIFTEEN_DAYS || STAYKRO_BILLING_CONFIG.boosts.FIFTEEN_DAYS,
+    THIRTY_DAYS: boostsConfig?.THIRTY_DAYS || STAYKRO_BILLING_CONFIG.boosts.THIRTY_DAYS,
+  };
+
   const boostList = [
-    STAYKRO_BILLING_CONFIG.boosts.SEVEN_DAYS,
-    STAYKRO_BILLING_CONFIG.boosts.FIFTEEN_DAYS,
-    STAYKRO_BILLING_CONFIG.boosts.THIRTY_DAYS,
+    resolvedBoosts.SEVEN_DAYS,
+    resolvedBoosts.FIFTEEN_DAYS,
+    resolvedBoosts.THIRTY_DAYS,
   ];
 
-  const currentBoost = STAYKRO_BILLING_CONFIG.boosts[selectedTier];
+  const currentBoost = resolvedBoosts[selectedTier];
 
   const handlePromote = async () => {
     setIsProcessing(true);
@@ -91,6 +103,13 @@ export function PromotePropertyModal({
           ondismiss: () => {
             setIsProcessing(false);
           },
+        },
+        onFailure: (failureResponse) => {
+          setIsProcessing(false);
+          setError(
+            failureResponse?.error?.description ||
+              "Payment was unsuccessful or cancelled. Please check your UPI app or payment method."
+          );
         },
         handler: async (paymentResponse) => {
           try {
@@ -240,9 +259,16 @@ export function PromotePropertyModal({
                       </div>
 
                       <div className="text-right shrink-0 pl-2">
-                        <span className="text-base font-black text-[#00412E]">
-                          ₹{tier.priceInr}
-                        </span>
+                        <div className="flex items-baseline justify-end gap-1.5">
+                          <span className="text-base font-black text-[#00412E]">
+                            ₹{tier.priceInr}
+                          </span>
+                          {tier.originalPriceInr && tier.originalPriceInr > tier.priceInr && (
+                            <span className="text-[11px] font-semibold text-zinc-400 line-through">
+                              ₹{tier.originalPriceInr}
+                            </span>
+                          )}
+                        </div>
                         <span className="block text-[10px] text-zinc-400 font-medium">
                           one-time
                         </span>

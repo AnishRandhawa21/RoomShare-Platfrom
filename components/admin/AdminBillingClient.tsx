@@ -16,6 +16,7 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Clock,
+  Tag,
 } from "lucide-react";
 
 interface AdminBillingClientProps {
@@ -74,6 +75,13 @@ export function AdminBillingClient({ data }: AdminBillingClientProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/admin/pricing"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-bold text-zinc-800 hover:bg-zinc-50 transition-all shadow-2xs"
+          >
+            <Tag className="h-4 w-4 text-[#00412E]" />
+            <span>Manage Pricing &rarr;</span>
+          </Link>
           <Link
             href="/admin/subscriptions"
             className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition-all shadow-xs"

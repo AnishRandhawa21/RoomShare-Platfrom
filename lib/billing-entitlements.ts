@@ -191,15 +191,17 @@ export async function getOwnerPublishingEntitlement(
     const isExpiringSoon = daysRemaining <= 5;
     const planName = planType === "PLUS" ? "StayKro Plus" : "StayKro Solo";
 
-    const standardPrice =
-      STAYKRO_BILLING_CONFIG.passes[planType]?.priceInr ||
+    // Exact historical price paid by user when pass was purchased
+    const paidPrice =
+      activePass.amount ??
+      STAYKRO_BILLING_CONFIG.passes[planType]?.priceInr ??
       (planType === "PLUS" ? 999 : 499);
 
     const passData = {
       id: activePass.id,
       planType,
       name: `${planName} (30-Day Pass)`,
-      amount: standardPrice,
+      amount: paidPrice,
       propertyLimit: allowedCount,
       startsAt: activePass.startsAt,
       expiresAt: activePass.expiresAt,
@@ -214,7 +216,7 @@ export async function getOwnerPublishingEntitlement(
       id: activePass.id,
       code: planType,
       name: `${planName} (30-Day Pass)`,
-      priceInr: standardPrice,
+      priceInr: paidPrice,
       maxProperties: allowedCount,
       status: activePass.status,
       startDate: activePass.startsAt,

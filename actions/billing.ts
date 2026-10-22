@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { STAYKRO_BILLING_CONFIG, type ListingPassPlanCode, type PropertyBoostType } from "@/config/billing";
+import { getEffectivePricingConfig, getEffectivePricingForOwner } from "@/lib/pricing";
 import {
   createRazorpayOrder,
   verifyRazorpayOrderSignature,
-  fetchRazorpayPayment,
 } from "@/lib/razorpay";
 import { getOwnerPublishingEntitlement } from "@/lib/billing-entitlements";
 
@@ -55,10 +55,42 @@ export async function checkPublishingEntitlementAction(propertyId?: string) {
 export async function createListingPassOrderAction(planCode: ListingPassPlanCode = "SOLO") {
   try {
     const { user, ownerProfile } = await requireOwner();
-    const passConfig = STAYKRO_BILLING_CONFIG.passes[planCode];
+    const pricingConfig = await getEffectivePricingForOwner(ownerProfile.id);
+    const passConfig = pricingConfig.passes[planCode];
 
     if (!passConfig) {
       return { success: false, error: "Invalid listing pass tier selected." };
+    }
+
+    const now = new Date();
+
+    // Prevent owners with an active PLUS pass from purchasing or extending SOLO pass
+    if (planCode === "SOLO") {
+      const activePlusPass = await prisma.ownerListingPass.findFirst({
+        where: {
+          ownerId: ownerProfile.id,
+          planType: "PLUS",
+          status: "ACTIVE",
+          expiresAt: { gt: now },
+        },
+      });
+
+      const activeLegacyPlus = await prisma.ownerSubscription.findFirst({
+        where: {
+          ownerId: ownerProfile.id,
+          status: "ACTIVE",
+          endDate: { gt: now },
+          plan: { code: { in: ["PLUS", "OWNER_MULTI_PROPERTY"] } },
+        },
+      });
+
+      if (activePlusPass || activeLegacyPlus) {
+        return {
+          success: false,
+          error:
+            "You currently have an active StayKro Plus pass. You can only purchase a Solo pass after your Plus pass expires.",
+        };
+      }
     }
 
     const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
@@ -129,6 +161,187 @@ export async function createListingPassOrderAction(planCode: ListingPassPlanCode
 }
 
 /**
+ * Activates a 100% Free / Complimentary Listing Pass directly without invoking Razorpay.
+ * Strictly verifies server-side that the effective price for this owner is ₹0.
+ */
+export async function claimFreeListingPassAction(planCode: ListingPassPlanCode = "SOLO") {
+  try {
+    const { user, ownerProfile } = await requireOwner();
+    const pricingConfig = await getEffectivePricingForOwner(ownerProfile.id);
+    const passConfig = pricingConfig.passes[planCode];
+
+    if (!passConfig) {
+      return { success: false, error: "Invalid listing pass tier selected." };
+    }
+
+    if (passConfig.priceInr > 0) {
+      return {
+        success: false,
+        error: `This pass is ₹${passConfig.priceInr} for your account. Please complete checkout to activate.`,
+      };
+    }
+
+    const now = new Date();
+
+    // Prevent owners with an active PLUS pass from claiming a SOLO pass
+    if (planCode === "SOLO") {
+      const activePlusPass = await prisma.ownerListingPass.findFirst({
+        where: {
+          ownerId: ownerProfile.id,
+          planType: "PLUS",
+          status: "ACTIVE",
+          expiresAt: { gt: now },
+        },
+      });
+
+      const activeLegacyPlus = await prisma.ownerSubscription.findFirst({
+        where: {
+          ownerId: ownerProfile.id,
+          status: "ACTIVE",
+          endDate: { gt: now },
+          plan: { code: { in: ["PLUS", "OWNER_MULTI_PROPERTY"] } },
+        },
+      });
+
+      if (activePlusPass || activeLegacyPlus) {
+        return {
+          success: false,
+          error:
+            "You currently have an active StayKro Plus pass. You can only claim a Solo pass after your Plus pass expires.",
+        };
+      }
+    }
+
+    // 1. Check for existing active pass to calculate extension or start date
+    const currentActivePass = await prisma.ownerListingPass.findFirst({
+      where: {
+        ownerId: ownerProfile.id,
+        status: "ACTIVE",
+        expiresAt: { gte: now },
+      },
+      orderBy: { expiresAt: "desc" },
+    });
+
+    let baseDate = now;
+    if (currentActivePass && currentActivePass.expiresAt > baseDate) {
+      baseDate = currentActivePass.expiresAt;
+    }
+
+    // Determine expiration date:
+    // If owner has an explicit expiresAt in override, honor that valid date; otherwise standard 30 days
+    let expiresAt: Date;
+    if (
+      pricingConfig.ownerDiscount?.expiresAt &&
+      new Date(pricingConfig.ownerDiscount.expiresAt) > now
+    ) {
+      expiresAt = new Date(pricingConfig.ownerDiscount.expiresAt);
+    } else {
+      expiresAt = new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const startsAt = currentActivePass?.startsAt || now;
+    const propertyLimit =
+      planCode === "PLUS"
+        ? Math.max(passConfig.maxProperties, STAYKRO_BILLING_CONFIG.plusMaxProperties)
+        : 1;
+
+    const receipt = `free_${planCode.toLowerCase()}_${Date.now().toString().slice(-8)}`;
+
+    // Create or extend OwnerListingPass
+    let listingPass: any;
+    if (currentActivePass && currentActivePass.planType === planCode) {
+      listingPass = await prisma.ownerListingPass.update({
+        where: { id: currentActivePass.id },
+        data: {
+          expiresAt,
+          amount: 0,
+          status: "ACTIVE",
+          razorpayPaymentId: "FREE_COMPLIMENTARY_GRANT",
+          razorpayOrderId: null,
+        },
+      });
+    } else {
+      if (currentActivePass) {
+        await prisma.ownerListingPass.update({
+          where: { id: currentActivePass.id },
+          data: { status: "EXPIRED" },
+        });
+      }
+
+      listingPass = await prisma.ownerListingPass.create({
+        data: {
+          ownerId: ownerProfile.id,
+          planType: planCode,
+          amount: 0,
+          currency: "INR",
+          propertyLimit,
+          startsAt,
+          expiresAt,
+          status: "ACTIVE",
+          razorpayPaymentId: "FREE_COMPLIMENTARY_GRANT",
+        },
+      });
+    }
+
+    // Record complimentary transaction record for financial accounting
+    await prisma.payment.create({
+      data: {
+        userId: user.id,
+        amount: 0,
+        currency: "INR",
+        purpose: "OWNER_LISTING_PASS",
+        status: "CAPTURED",
+        paymentType: "ONE_TIME",
+        razorpayPaymentId: `FREE_${Date.now()}`,
+        metadata: {
+          planCode,
+          planName: passConfig.name,
+          durationDays: 30,
+          receipt,
+          isComplimentary: true,
+          ownerDiscountReason: pricingConfig.ownerDiscount?.reason || "Admin Free Pass Grant",
+        },
+        ownerListingPassId: listingPass.id,
+      },
+    });
+
+    // Revert owner pricing to global catalog by consuming/deactivating the custom discount override
+    await prisma.ownerPricingOverride.updateMany({
+      where: {
+        ownerProfileId: ownerProfile.id,
+        isActive: true,
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    revalidatePath("/owner/subscription");
+    revalidatePath("/owner/subscriptions");
+    revalidatePath("/owner/properties");
+    revalidatePath("/admin/pricing");
+    revalidatePath("/admin/billing");
+
+    return {
+      success: true,
+      message: `${passConfig.name} activated for free! Valid until ${expiresAt.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })}.`,
+      expiresAt: expiresAt.toISOString(),
+      planName: passConfig.name,
+    };
+  } catch (error: unknown) {
+    console.error("claimFreeListingPassAction error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to claim free listing pass.",
+    };
+  }
+}
+
+/**
  * 3. Cryptographically verifies Razorpay payment signature server-side and activates 30-day pass.
  *
  * Renewal Logic:
@@ -144,7 +357,8 @@ export async function verifyListingPassPaymentAction(input: {
 }) {
   try {
     const { user, ownerProfile } = await requireOwner();
-    const passConfig = STAYKRO_BILLING_CONFIG.passes[input.planCode];
+    const pricingConfig = await getEffectivePricingForOwner(ownerProfile.id);
+    const passConfig = pricingConfig.passes[input.planCode];
 
     if (!passConfig) {
       return { success: false, error: "Invalid listing pass tier." };
@@ -172,6 +386,24 @@ export async function verifyListingPassPaymentAction(input: {
     });
 
     if (existingPayment?.status === "CAPTURED" && existingPayment.ownerListingPass) {
+      // Revert owner pricing to global catalog by consuming/deactivating the custom discount override
+      await prisma.ownerPricingOverride.updateMany({
+        where: {
+          ownerProfileId: ownerProfile.id,
+          isActive: true,
+        },
+        data: {
+          isActive: false,
+        },
+      });
+
+      revalidatePath("/owner/subscription");
+      revalidatePath("/owner/subscriptions");
+      revalidatePath("/owner/billing");
+      revalidatePath("/owner/properties");
+      revalidatePath("/admin/pricing");
+      revalidatePath("/owner");
+
       return {
         success: true,
         message: `${passConfig.name} is active!`,
@@ -312,9 +544,22 @@ export async function verifyListingPassPaymentAction(input: {
       }
     }
 
+    // Revert owner pricing to global catalog by consuming/deactivating the custom discount override
+    await prisma.ownerPricingOverride.updateMany({
+      where: {
+        ownerProfileId: ownerProfile.id,
+        isActive: true,
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
     revalidatePath("/owner/subscription");
+    revalidatePath("/owner/subscriptions");
     revalidatePath("/owner/billing");
     revalidatePath("/owner/properties");
+    revalidatePath("/admin/pricing");
     revalidatePath("/owner");
 
     return {
@@ -388,7 +633,8 @@ export async function createPropertyBoostOrderAction(input: {
 }) {
   try {
     const { user, ownerProfile } = await requireOwner();
-    const boostConfig = STAYKRO_BILLING_CONFIG.boosts[input.boostType];
+    const pricingConfig = await getEffectivePricingConfig();
+    const boostConfig = pricingConfig.boosts[input.boostType];
 
     if (!boostConfig) {
       return { success: false, error: "Invalid boost duration tier." };
@@ -491,8 +737,9 @@ export async function verifyPropertyBoostPaymentAction(input: {
   propertyId?: string;
 }) {
   try {
-    const { user, ownerProfile } = await requireOwner();
-    const boostConfig = STAYKRO_BILLING_CONFIG.boosts[input.boostType];
+    const { ownerProfile } = await requireOwner();
+    const pricingConfig = await getEffectivePricingConfig();
+    const boostConfig = pricingConfig.boosts[input.boostType];
 
     const isValid = verifyRazorpayOrderSignature({
       orderId: input.razorpay_order_id,
@@ -516,7 +763,7 @@ export async function verifyPropertyBoostPaymentAction(input: {
     const now = new Date();
     const boostEnd = new Date(now.getTime() + boostRecord.durationDays * 24 * 60 * 60 * 1000);
 
-    const updatedBoost = await prisma.propertyBoost.update({
+    await prisma.propertyBoost.update({
       where: { id: boostRecord.id },
       data: {
         status: "ACTIVE",
@@ -616,6 +863,28 @@ export async function getOwnerBillingSummaryAction() {
         }),
       ]);
 
+    // If owner has an active custom pricing override that was already availed
+    // (i.e. they possess an active pass created/extended on or after the override was issued),
+    // automatically deactivate the consumed override so the subscription page reflects global catalog pricing.
+    if (activePass) {
+      const activeOverride = await prisma.ownerPricingOverride.findFirst({
+        where: { ownerProfileId: ownerProfile.id, isActive: true },
+      });
+
+      if (activeOverride) {
+        const passTime = new Date(activePass.createdAt).getTime();
+        const overrideTime = new Date(activeOverride.updatedAt || activeOverride.createdAt).getTime();
+        if (passTime >= overrideTime - 60000) {
+          await prisma.ownerPricingOverride.update({
+            where: { id: activeOverride.id },
+            data: { isActive: false },
+          });
+        }
+      }
+    }
+
+    const pricingConfig = await getEffectivePricingForOwner(ownerProfile.id);
+
     return {
       success: true,
       data: {
@@ -635,7 +904,7 @@ export async function getOwnerBillingSummaryAction() {
             id: p.id,
             code: p.planType,
             name: p.planType === "PLUS" ? "StayKro Plus" : "StayKro Solo",
-            priceInr: p.planType === "PLUS" ? 999 : 499,
+            priceInr: p.amount ?? (p.planType === "PLUS" ? 999 : 499),
             maxProperties: p.propertyLimit,
           },
         })),
@@ -644,10 +913,11 @@ export async function getOwnerBillingSummaryAction() {
         properties,
         publishedPropertiesCount: entitlement.publishedCount,
         allowedPropertiesCount: entitlement.allowedCount,
-        plansConfig: STAYKRO_BILLING_CONFIG.passes,
-        passesConfig: STAYKRO_BILLING_CONFIG.passes,
-        boostsConfig: STAYKRO_BILLING_CONFIG.boosts,
-        plusMaxProperties: STAYKRO_BILLING_CONFIG.plusMaxProperties,
+        plansConfig: pricingConfig.passes,
+        passesConfig: pricingConfig.passes,
+        boostsConfig: pricingConfig.boosts,
+        plusMaxProperties: pricingConfig.plusMaxProperties,
+        ownerDiscount: pricingConfig.ownerDiscount,
       },
     };
   } catch (error: unknown) {

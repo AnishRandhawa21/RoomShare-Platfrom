@@ -279,6 +279,8 @@ model User {
   auditLogs                 AuditLog[]
   reviews                   Review[]
   localityRequests          LocalityRequest[]
+  systemPricingPlansUpdated SystemPricingPlan[]
+  pricingOverridesCreated   OwnerPricingOverride[]    @relation("CreatedOwnerPricingOverrides")
 
   @@index([supabaseAuthId])
   @@index([role])
@@ -334,6 +336,7 @@ model OwnerProfile {
   subscriptions OwnerSubscription[]
   listingPasses OwnerListingPass[]
   boosts        PropertyBoost[]
+  pricingOverride OwnerPricingOverride?
 
   @@index([verificationStatus])
   @@index([contactPhone])
@@ -848,6 +851,62 @@ model OwnerListingPass {
   @@index([expiresAt])
   @@index([razorpayOrderId])
   @@index([razorpayPaymentId])
+}
+
+// ==============================================================================
+// 11C. SYSTEM PRICING CATALOG (Admin-Managed Dynamic Pricing for Passes & Boosts)
+// ==============================================================================
+
+model SystemPricingPlan {
+  id               String   @id @default(uuid())
+  category         String   // "LISTING_PASS" | "PROPERTY_BOOST"
+  code             String   @unique // "PASS_SOLO", "PASS_PLUS", "BOOST_7_DAYS", "BOOST_15_DAYS", "BOOST_30_DAYS"
+  name             String
+  subtitle         String?
+  tagline          String?
+  description      String?  @db.Text
+  badge            String?
+  priceInr         Int      // Active selling price in INR
+  originalPriceInr Int?     // Optional strikethrough price for promotional discounts
+  durationDays     Int      @default(30)
+  maxProperties    Int      @default(1)
+  features         String[]
+  isActive         Boolean  @default(true)
+  updatedByUserId  String?
+  updatedByUser    User?    @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([category, isActive])
+  @@index([code])
+}
+
+// ==============================================================================
+// 11D. OWNER PRICING OVERRIDES (VIP & Partner Custom Pricing/Discounts)
+// ==============================================================================
+
+model OwnerPricingOverride {
+  id               String       @id @default(uuid())
+  ownerProfileId   String       @unique
+  ownerProfile     OwnerProfile @relation(fields: [ownerProfileId], references: [id], onDelete: Cascade)
+
+  discountType     String       // "PERCENTAGE" | "FIXED_PRICE"
+  percentageOff    Int?         // 1-99 for PERCENTAGE (e.g. 20 for 20% off)
+  customSoloPrice  Int?         // in INR for FIXED_PRICE (e.g. 299)
+  customPlusPrice  Int?         // in INR for FIXED_PRICE (e.g. 599)
+
+  reason           String?      // e.g. "Exclusive early adopter partner discount"
+  expiresAt        DateTime?    // null = permanent, or specific expiration date
+  isActive         Boolean      @default(true)
+
+  createdByUserId  String?
+  createdByUser    User?        @relation("CreatedOwnerPricingOverrides", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([ownerProfileId, isActive])
+  @@index([expiresAt])
 }
 
 // Configurable pricing for featured listings (₹199 property, ₹99 room are DB-driven)

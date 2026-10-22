@@ -5,6 +5,7 @@ import { EnquiryStatus, RoommateRequestStatus } from "@/lib/enums";
 import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { getOwnerPublishingEntitlement } from "@/lib/billing-entitlements";
+import { getEffectivePricingConfig } from "@/lib/pricing";
 
 // Utility for URL-friendly slugs
 function generateSlug(name: string, locality: string): string {
@@ -1367,27 +1368,80 @@ export async function getOwnerPaymentsAction(params: { page?: number; limit?: nu
 export async function getOwnerFeaturedListingsAction() {
   try {
     const { ownerProfile } = await requireOwnerContext();
-    const [featuredListings, pricingPlans] = await Promise.all([
+    const now = new Date();
+
+    const [propertyBoosts, legacyFeatured, pricingConfig, properties] = await Promise.all([
+      prisma.propertyBoost.findMany({
+        where: { ownerId: ownerProfile.id },
+        orderBy: { createdAt: "desc" },
+        include: {
+          property: {
+            select: { id: true, name: true, slug: true, city: true, locality: true },
+          },
+        },
+      }),
       prisma.featuredListing.findMany({
         where: { property: { ownerId: ownerProfile.id } },
         orderBy: { createdAt: "desc" },
         include: {
           pricingPlan: true,
-          property: { select: { id: true, name: true, slug: true } },
+          property: { select: { id: true, name: true, slug: true, city: true, locality: true } },
           roomType: { select: { id: true, name: true } },
         },
       }),
-      prisma.featuredPricingPlan.findMany({
-        where: { isActive: true },
-        orderBy: { priceInr: "asc" },
+      getEffectivePricingConfig(),
+      prisma.property.findMany({
+        where: { ownerId: ownerProfile.id, deletedAt: null },
+        select: { id: true, name: true, slug: true, locality: true, city: true, status: true },
+        orderBy: { name: "asc" },
       }),
     ]);
+
+    // Map modern PropertyBoost records
+    const mappedBoosts = propertyBoosts.map((b) => {
+      const isExpired = b.endDate && new Date(b.endDate) < now;
+      const effectiveStatus =
+        b.status === "ACTIVE" && isExpired ? "EXPIRED" : b.status;
+      const boostConfig = pricingConfig.boosts[b.boostType];
+
+      return {
+        id: b.id,
+        isBoost: true,
+        boostType: b.boostType,
+        status: effectiveStatus,
+        startDate: b.startDate || b.createdAt,
+        endDate: b.endDate || new Date(b.createdAt.getTime() + b.durationDays * 24 * 60 * 60 * 1000),
+        property: b.property,
+        pricingPlan: {
+          name: boostConfig?.name || `${b.durationDays}-Day Visibility Boost`,
+          priceInr: b.amountInr,
+          durationDays: b.durationDays,
+        },
+      };
+    });
+
+    // Map any legacy FeaturedListing records
+    const mappedLegacy = legacyFeatured.map((item) => ({
+      id: item.id,
+      isBoost: false,
+      boostType: "SEVEN_DAYS",
+      status: item.status,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      property: item.property,
+      pricingPlan: {
+        name: item.pricingPlan.name,
+        priceInr: item.pricingPlan.priceInr,
+        durationDays: item.pricingPlan.durationDays,
+      },
+    }));
 
     return {
       success: true,
       data: {
-        featuredListings,
-        pricingPlans,
+        featuredListings: [...mappedBoosts, ...mappedLegacy],
+        pricingConfig,
+        properties,
       },
     };
   } catch (error: unknown) {

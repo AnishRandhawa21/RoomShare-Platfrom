@@ -15,12 +15,13 @@ import {
   CreditCard,
   ChevronRight,
   Clock,
-  Zap,
+  TrendingDown,
 } from "lucide-react";
-import { STAYKRO_BILLING_CONFIG, type ListingPassPlanCode } from "@/config/billing";
+import { type ListingPassPlanCode } from "@/config/billing";
 import {
   createListingPassOrderAction,
   verifyListingPassPaymentAction,
+  claimFreeListingPassAction,
 } from "@/actions/billing";
 import { useRazorpay } from "@/lib/useRazorpay";
 import { PromotePropertyModal } from "@/components/property/PromotePropertyModal";
@@ -29,6 +30,7 @@ interface PlanConfigItem {
   code: string;
   name: string;
   priceInr: number;
+  originalPriceInr?: number | null;
   durationDays: number;
   maxProperties: number;
   tagline: string;
@@ -109,35 +111,95 @@ interface OwnerSubscriptionClientProps {
   allowedPropertiesCount: number;
   plansConfig: Record<string, PlanConfigItem>;
   passesConfig?: Record<string, PlanConfigItem>;
-  boostsConfig: typeof STAYKRO_BILLING_CONFIG.boosts;
+  boostsConfig: Record<string, any>;
   plusMaxProperties: number;
+  ownerDiscount?: {
+    isApplied: boolean;
+    discountType: string;
+    percentageOff?: number | null;
+    customSoloPrice?: number | null;
+    customPlusPrice?: number | null;
+    reason?: string | null;
+    expiresAt?: string | null;
+  } | null;
 }
 
 export function OwnerSubscriptionClient({
   activeSubscription,
-  subscriptionsHistory,
   activeBoosts,
   payments,
   properties,
   publishedPropertiesCount,
   allowedPropertiesCount,
   plansConfig,
+  passesConfig,
   boostsConfig,
   plusMaxProperties,
+  ownerDiscount,
 }: OwnerSubscriptionClientProps) {
   const router = useRouter();
   const { openOrderCheckout } = useRazorpay();
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingPlan, setProcessingPlan] = useState<ListingPassPlanCode | null>(null);
+  const isProcessing = processingPlan !== null;
+  const isSoloProcessing = processingPlan === "SOLO";
+  const isPlusProcessing = processingPlan === "PLUS";
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Property Boost Modal State
   const [promoteProperty, setPromoteProperty] = useState<PropertySummary | null>(null);
 
+  const soloPlan = passesConfig?.SOLO || plansConfig?.SOLO;
+  const plusPlan = passesConfig?.PLUS || plansConfig?.PLUS;
+
+  const soloPrice = soloPlan?.priceInr ?? 499;
+  const soloOriginalPrice = soloPlan?.originalPriceInr;
+  const soloBadge = soloPlan?.badge || "1 PG • 30 Days";
+
+  const plusPrice = plusPlan?.priceInr ?? 999;
+  const plusOriginalPrice = plusPlan?.originalPriceInr;
+  const plusBadge = plusPlan?.badge || "Multi-PG • 30 Days";
+
+  const soloDiscountPct =
+    soloOriginalPrice && soloOriginalPrice > soloPrice
+      ? Math.round(((soloOriginalPrice - soloPrice) / soloOriginalPrice) * 100)
+      : null;
+
+  const plusDiscountPct =
+    plusOriginalPrice && plusOriginalPrice > plusPrice
+      ? Math.round(((plusOriginalPrice - plusPrice) / plusOriginalPrice) * 100)
+      : null;
+
   const handlePurchasePass = async (planCode: ListingPassPlanCode) => {
-    setIsProcessing(true);
+    if (planCode === "SOLO" && isPlusActive) {
+      setActionError("You currently have an active StayKro Plus pass. You can only purchase a Solo pass after your Plus pass expires.");
+      return;
+    }
+
+    setProcessingPlan(planCode);
     setActionError(null);
     setSuccessMessage(null);
+
+    const targetPrice = planCode === "SOLO" ? soloPrice : plusPrice;
+
+    // Direct Free Claim: Bypass Razorpay completely if price is ₹0 (Admin-granted complimentary pass)
+    if (targetPrice === 0) {
+      try {
+        const claimRes = await claimFreeListingPassAction(planCode);
+        if (claimRes.success) {
+          setSuccessMessage(claimRes.message || "Free listing pass activated successfully!");
+          router.refresh();
+        } else {
+          setActionError(claimRes.error || "Failed to activate complimentary pass.");
+        }
+      } catch (err: any) {
+        console.error("Free claim error:", err);
+        setActionError(err?.message || "Failed to activate complimentary pass.");
+      } finally {
+        setProcessingPlan(null);
+      }
+      return;
+    }
 
     try {
       // 1. Create one-time 30-day listing pass order
@@ -145,7 +207,7 @@ export function OwnerSubscriptionClient({
 
       if (!res.success || !res.orderId) {
         setActionError(res.error || "Failed to create listing pass order. Please try again.");
-        setIsProcessing(false);
+        setProcessingPlan(null);
         return;
       }
 
@@ -168,8 +230,15 @@ export function OwnerSubscriptionClient({
         },
         modal: {
           ondismiss: () => {
-            setIsProcessing(false);
+            setProcessingPlan(null);
           },
+        },
+        onFailure: (failureResponse) => {
+          setProcessingPlan(null);
+          setActionError(
+            failureResponse?.error?.description ||
+              "Payment was unsuccessful or cancelled. Please check your UPI app or payment method."
+          );
         },
         handler: async (paymentResponse) => {
           try {
@@ -190,21 +259,21 @@ export function OwnerSubscriptionClient({
             console.error("Verification error:", err);
             setActionError(err?.message || "Verification failed.");
           } finally {
-            setIsProcessing(false);
+            setProcessingPlan(null);
           }
         },
       });
     } catch (err: any) {
       console.error("Checkout launch error:", err);
       setActionError(err?.message || "Failed to launch Razorpay checkout.");
-      setIsProcessing(false);
+      setProcessingPlan(null);
     }
   };
 
   const currentPlanCode = activeSubscription?.plan?.code?.toUpperCase();
-  const isSoloActive = currentPlanCode === "SOLO" || currentPlanCode === "OWNER_SINGLE_PROPERTY";
-  const isPlusActive = currentPlanCode === "PLUS" || currentPlanCode === "OWNER_MULTI_PROPERTY";
-  const isPassActive = activeSubscription && activeSubscription.status === "ACTIVE";
+  const isPassActive = Boolean(activeSubscription && activeSubscription.status === "ACTIVE");
+  const isSoloActive = (currentPlanCode === "SOLO" || currentPlanCode === "OWNER_SINGLE_PROPERTY") && isPassActive;
+  const isPlusActive = (currentPlanCode === "PLUS" || currentPlanCode === "OWNER_MULTI_PROPERTY") && isPassActive;
 
   const now = new Date();
   const endDate = activeSubscription?.endDate ? new Date(activeSubscription.endDate) : null;
@@ -328,8 +397,11 @@ export function OwnerSubscriptionClient({
               {isPassActive && activeSubscription && (
                 <div className="text-right">
                   <div className="text-2xl font-black text-[#00412E]">
-                    ₹{activeSubscription.plan.priceInr}
+                    ₹{isSoloActive ? (soloOriginalPrice || soloPrice) : (plusOriginalPrice || plusPrice)}
                     <span className="text-xs font-normal text-zinc-400"> / 30d</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-400 font-medium mt-0.5">
+                    Standard Plan Value
                   </div>
                 </div>
               )}
@@ -378,18 +450,38 @@ export function OwnerSubscriptionClient({
                   type="button"
                   disabled={isProcessing}
                   onClick={() => handlePurchasePass("PLUS")}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] shadow-2xs transition-all cursor-pointer"
+                  className={`inline-flex items-center gap-1.5 rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] shadow-2xs transition-all cursor-pointer ${
+                    isProcessing && !isPlusProcessing ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
                 >
-                  <span>Upgrade to StayKro Plus (₹999)</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  {isPlusProcessing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Upgrade to StayKro Plus (₹{plusPrice})</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"
                   disabled={isProcessing}
                   onClick={() => handlePurchasePass("SOLO")}
-                  className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700 transition-colors cursor-pointer"
+                  className={`inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700 transition-colors cursor-pointer ${
+                    isProcessing && !isSoloProcessing ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
                 >
-                  <span>Renew Solo (+30 Days)</span>
+                  {isSoloProcessing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[#00412E]" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <span>Renew Solo (+30 Days)</span>
+                  )}
                 </button>
               </div>
             ) : isPlusActive ? (
@@ -401,9 +493,18 @@ export function OwnerSubscriptionClient({
                   type="button"
                   disabled={isProcessing}
                   onClick={() => handlePurchasePass("PLUS")}
-                  className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700 transition-colors cursor-pointer"
+                  className={`inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700 transition-colors cursor-pointer ${
+                    isProcessing && !isPlusProcessing ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
                 >
-                  <span>Extend Plus (+30 Days)</span>
+                  {isPlusProcessing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[#00412E]" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <span>Extend Plus (+30 Days)</span>
+                  )}
                 </button>
               </div>
             ) : (
@@ -412,18 +513,52 @@ export function OwnerSubscriptionClient({
                   type="button"
                   disabled={isProcessing}
                   onClick={() => handlePurchasePass("SOLO")}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#00412E] px-4 py-2 text-xs font-bold text-white hover:bg-[#002d20] shadow-2xs transition-all cursor-pointer"
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-2xs transition-all cursor-pointer ${
+                    soloPrice === 0
+                      ? "bg-emerald-700 hover:bg-emerald-800 ring-2 ring-emerald-500/30"
+                      : "bg-[#00412E] hover:bg-[#002d20]"
+                  } ${isProcessing && !isSoloProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
                 >
-                  <span>Get StayKro Solo (₹499)</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  {isSoloProcessing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : soloPrice === 0 ? (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                      <span>Claim Free Solo Pass (₹0)</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Get StayKro Solo (₹{soloPrice})</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"
                   disabled={isProcessing}
                   onClick={() => handlePurchasePass("PLUS")}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#00412E] bg-white text-[#00412E] hover:bg-[#eff4ec] px-4 py-2 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold shadow-2xs transition-all cursor-pointer ${
+                    plusPrice === 0
+                      ? "border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 ring-2 ring-emerald-500/20"
+                      : "border-[#00412E] bg-white text-[#00412E] hover:bg-[#eff4ec]"
+                  } ${isProcessing && !isPlusProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
                 >
-                  <span>Get StayKro Plus (₹999)</span>
+                  {isPlusProcessing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : plusPrice === 0 ? (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Claim Free Plus Pass (₹0)</span>
+                    </>
+                  ) : (
+                    <span>Get StayKro Plus (₹{plusPrice})</span>
+                  )}
                 </button>
               </div>
             )}
@@ -503,9 +638,55 @@ export function OwnerSubscriptionClient({
           </p>
         </div>
 
+        {/* Personalized VIP Partner Discount Banner */}
+        {ownerDiscount?.isApplied && (
+          <div className="rounded-2xl bg-gradient-to-r from-[#003626] via-[#00412E] to-[#0d5940] p-4 text-white flex items-center justify-between gap-4 shadow-sm border border-emerald-500/30">
+            <div className="flex items-center gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center text-emerald-300 shrink-0 border border-white/10">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-200 bg-white/15 px-2 py-0.5 rounded-md border border-white/10">
+                    VIP Partner Pricing Applied
+                  </span>
+                  {ownerDiscount.percentageOff && (
+                    <span className="text-xs font-black text-amber-300">
+                      {ownerDiscount.percentageOff}% OFF
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-emerald-100/90 mt-1">
+                  {ownerDiscount.reason || "Special customized partner pricing has been activated for your account."}
+                  {ownerDiscount.expiresAt && (
+                    <span className="text-emerald-200 font-semibold">
+                      {" "}• Valid until {new Date(ownerDiscount.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="hidden sm:block text-right shrink-0">
+              <span className="text-[11px] font-bold text-emerald-300 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-500/40">
+                Active on Checkout
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Solo Card */}
-          <div className="rounded-3xl border border-[#E8EAE5] bg-white p-6 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between">
+          <div className="rounded-3xl border border-[#E8EAE5] bg-white p-6 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between relative overflow-hidden">
+            {/* Top-Right Discount Ribbon */}
+            {soloDiscountPct ? (
+              <div className="absolute top-0 right-0 bg-[#00412E] text-white px-3.5 py-1.5 rounded-bl-2xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                <span className="bg-emerald-400 text-zinc-950 font-black px-1.5 py-0.5 rounded text-[9px]">
+                  {soloDiscountPct}% OFF
+                </span>
+                <span>Special Offer</span>
+              </div>
+            ) : null}
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -514,18 +695,42 @@ export function OwnerSubscriptionClient({
                   </span>
                   <h3 className="text-xl font-black text-zinc-950">StayKro Solo</h3>
                 </div>
-                <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-700">
-                  1 PG • 30 Days
-                </span>
+                {!soloDiscountPct && (
+                  <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-700">
+                    {soloBadge}
+                  </span>
+                )}
               </div>
 
               <div>
-                <div className="text-3xl font-black text-zinc-950">
-                  ₹499
+                <div className="flex flex-wrap items-baseline gap-2">
+                  {soloPrice === 0 ? (
+                    <span className="text-3xl font-black text-emerald-800">FREE</span>
+                  ) : (
+                    <span className="text-3xl font-black text-zinc-950">₹{soloPrice}</span>
+                  )}
+                  {soloOriginalPrice && (soloOriginalPrice > soloPrice || soloPrice === 0) && (
+                    <span className="text-base font-bold text-zinc-400 line-through">
+                      ₹{soloOriginalPrice}
+                    </span>
+                  )}
+                  {soloPrice === 0 ? (
+                    <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 border border-emerald-300/60 inline-flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-emerald-600" />
+                      100% Free Pass
+                    </span>
+                  ) : soloDiscountPct ? (
+                    <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 border border-emerald-300/60 inline-flex items-center gap-1">
+                      <TrendingDown className="h-3 w-3" />
+                      Save ₹{soloOriginalPrice! - soloPrice}
+                    </span>
+                  ) : null}
                   <span className="text-xs font-medium text-zinc-400"> / 30 days</span>
                 </div>
                 <div className="text-xs text-zinc-500 mt-1">
-                  Valid for 30 days • One-time payment via UPI / Card
+                  {soloPrice === 0
+                    ? "Complimentary access • Zero payment required"
+                    : "Valid for 30 days • One-time payment via UPI / Card"}
                 </div>
               </div>
 
@@ -550,49 +755,108 @@ export function OwnerSubscriptionClient({
             </div>
 
             <div className="mt-6 pt-4 border-t border-zinc-100">
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={() => handlePurchasePass("SOLO")}
-                className="w-full rounded-full bg-[#00412E] hover:bg-[#002f21] py-3 text-xs font-bold text-white shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Get Solo Pass (₹499)</span>
-                    <ArrowRight className="h-3.5 w-3.5 text-[#96BF8A]" />
-                  </>
-                )}
-              </button>
+              {isPlusActive ? (
+                <div className="space-y-1.5 text-center">
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full rounded-full py-3 text-xs font-bold text-zinc-400 bg-zinc-100 border border-zinc-200/80 shadow-none flex items-center justify-center gap-2 cursor-not-allowed"
+                  >
+                    <span>Unavailable while Plus is Active</span>
+                  </button>
+                  <p className="text-[11px] text-zinc-400">
+                    You can switch to Solo once your active Plus pass expires
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => handlePurchasePass("SOLO")}
+                  className={`w-full rounded-full py-3 text-xs font-bold text-white shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    soloPrice === 0
+                      ? "bg-emerald-700 hover:bg-emerald-800 ring-2 ring-emerald-500/20"
+                      : "bg-[#00412E] hover:bg-[#002f21]"
+                  } ${isProcessing && !isSoloProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  {isSoloProcessing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : soloPrice === 0 ? (
+                    <>
+                      <Sparkles className="h-4 w-4 text-amber-300" />
+                      <span>Claim Free Solo Pass (₹0)</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Get Solo Pass (₹{soloPrice})</span>
+                      <ArrowRight className="h-3.5 w-3.5 text-[#96BF8A]" />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
           {/* Plus Card */}
           <div className="rounded-3xl border border-[#96BF8A]/50 bg-[#eff4ec]/25 p-6 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute top-0 right-0 bg-[#00412E] text-white px-4 py-1 rounded-bl-2xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+            {/* Top-Right Ribbon */}
+            <div className="absolute top-0 right-0 bg-[#00412E] text-white px-4 py-1.5 rounded-bl-2xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+              {plusDiscountPct && (
+                <span className="bg-amber-400 text-zinc-950 font-black px-1.5 py-0.5 rounded text-[9px]">
+                  {plusDiscountPct}% OFF
+                </span>
+              )}
               <Sparkles className="h-3 w-3 text-[#96BF8A]" />
               <span>Multi-PG</span>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <span className="text-xs font-extrabold uppercase tracking-wider text-[#00412E]">
-                  Multi-Property Portfolio
-                </span>
-                <h3 className="text-xl font-black text-zinc-950">StayKro Plus</h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-[#00412E]">
+                    Multi-Property Portfolio
+                  </span>
+                  <h3 className="text-xl font-black text-zinc-950">StayKro Plus</h3>
+                </div>
+                {!plusDiscountPct && (
+                  <span className="rounded-full bg-emerald-100/70 text-emerald-900 px-3 py-1 text-xs font-bold border border-emerald-200">
+                    {plusBadge}
+                  </span>
+                )}
               </div>
 
               <div>
-                <div className="text-3xl font-black text-zinc-950">
-                  ₹999
+                <div className="flex flex-wrap items-baseline gap-2">
+                  {plusPrice === 0 ? (
+                    <span className="text-3xl font-black text-emerald-800">FREE</span>
+                  ) : (
+                    <span className="text-3xl font-black text-zinc-950">₹{plusPrice}</span>
+                  )}
+                  {plusOriginalPrice && (plusOriginalPrice > plusPrice || plusPrice === 0) && (
+                    <span className="text-base font-bold text-zinc-400 line-through">
+                      ₹{plusOriginalPrice}
+                    </span>
+                  )}
+                  {plusPrice === 0 ? (
+                    <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 border border-emerald-300/60 inline-flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-emerald-600" />
+                      100% Free Pass
+                    </span>
+                  ) : plusDiscountPct ? (
+                    <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 border border-emerald-300/60 inline-flex items-center gap-1">
+                      <TrendingDown className="h-3 w-3" />
+                      Save ₹{plusOriginalPrice! - plusPrice}
+                    </span>
+                  ) : null}
                   <span className="text-xs font-medium text-zinc-400"> / 30 days</span>
                 </div>
                 <div className="text-xs text-zinc-500 mt-1">
-                  Valid for 30 days • Up to {plusMaxProperties} published PGs
+                  {plusPrice === 0
+                    ? `Complimentary access • Up to ${plusMaxProperties} published PGs`
+                    : `Valid for 30 days • Up to ${plusMaxProperties} published PGs`}
                 </div>
               </div>
 
@@ -621,16 +885,25 @@ export function OwnerSubscriptionClient({
                 type="button"
                 disabled={isProcessing}
                 onClick={() => handlePurchasePass("PLUS")}
-                className="w-full rounded-full bg-[#00412E] hover:bg-[#002f21] py-3 text-xs font-bold text-white shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className={`w-full rounded-full py-3 text-xs font-bold text-white shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  plusPrice === 0
+                    ? "bg-emerald-700 hover:bg-emerald-800 ring-2 ring-emerald-500/20"
+                    : "bg-[#00412E] hover:bg-[#002f21]"
+                } ${isProcessing && !isPlusProcessing ? "opacity-60 cursor-not-allowed" : ""}`}
               >
-                {isProcessing ? (
+                {isPlusProcessing ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     <span>Processing...</span>
                   </>
+                ) : plusPrice === 0 ? (
+                  <>
+                    <Sparkles className="h-4 w-4 text-amber-300" />
+                    <span>Claim Free Plus Pass (₹0)</span>
+                  </>
                 ) : (
                   <>
-                    <span>Get Plus Pass (₹999)</span>
+                    <span>Get Plus Pass (₹{plusPrice})</span>
                     <ArrowRight className="h-3.5 w-3.5 text-[#96BF8A]" />
                   </>
                 )}
@@ -763,6 +1036,7 @@ export function OwnerSubscriptionClient({
           propertyName={promoteProperty.name}
           isOpen={true}
           onClose={() => setPromoteProperty(null)}
+          boostsConfig={boostsConfig}
           onSuccess={() => {
             setPromoteProperty(null);
             window.location.reload();

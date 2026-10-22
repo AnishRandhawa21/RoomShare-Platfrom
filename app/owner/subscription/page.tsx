@@ -100,8 +100,10 @@ async function SubscriptionDataLoader() {
       publishedPropertiesCount={data.publishedPropertiesCount}
       allowedPropertiesCount={data.allowedPropertiesCount}
       plansConfig={data.plansConfig as any}
+      passesConfig={data.passesConfig as any}
       boostsConfig={data.boostsConfig}
       plusMaxProperties={data.plusMaxProperties}
+      ownerDiscount={data.ownerDiscount}
     />
   );
 }
