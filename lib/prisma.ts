@@ -5,6 +5,35 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+function cleanDatabaseUrl(raw?: string | null): string | undefined {
+  if (!raw) return undefined;
+  let cleaned = raw.trim();
+  // Strip accidental "DATABASE_URL=" prefix if copied into environment variable value in dashboard
+  cleaned = cleaned.replace(/^DATABASE_URL\s*=\s*/i, "");
+  // Strip surrounding quotes (double or single)
+  cleaned = cleaned.replace(/^["']|["']$/g, "").trim();
+  cleaned = cleaned.replace(/^["']|["']$/g, "").trim();
+  return cleaned || undefined;
+}
+
+// 1. Sanitize process.env.DATABASE_URL and DIRECT_URL so Prisma's schema parser receives a clean protocol URL
+const rawDbUrl =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.DIRECT_URL;
+
+const sanitizedDbUrl = cleanDatabaseUrl(rawDbUrl);
+if (sanitizedDbUrl) {
+  process.env.DATABASE_URL = sanitizedDbUrl;
+}
+if (process.env.DIRECT_URL) {
+  const sanitizedDirect = cleanDatabaseUrl(process.env.DIRECT_URL);
+  if (sanitizedDirect) {
+    process.env.DIRECT_URL = sanitizedDirect;
+  }
+}
+
 /**
  * Returns a robust, serverless-optimized database connection URL.
  * Automatically converts Supabase pooler session port (5432) to transaction mode (6543)
@@ -12,7 +41,7 @@ const globalForPrisma = globalThis as unknown as {
  * from Promise.all in Server Components do not time out.
  */
 function getOptimizedDatabaseUrl(): string | undefined {
-  const url = process.env.DATABASE_URL;
+  const url = cleanDatabaseUrl(process.env.DATABASE_URL);
   if (!url) return undefined;
 
   let optimized = url;
